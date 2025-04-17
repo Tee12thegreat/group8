@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -16,6 +17,7 @@
                     colors: {
                         primary: '#5D5CDE',
                         'dark-bg': '#181818',
+                        'light-bg': '#FFFFFF',
                         'risk-low': '#10B981',
                         'risk-medium': '#F59E0B',
                         'risk-high': '#EF4444',
@@ -32,36 +34,53 @@
             display: inline-block;
             margin-right: 6px;
         }
-        .risk-low { background-color: #10B981; }
-        .risk-medium { background-color: #F59E0B; }
-        .risk-high { background-color: #EF4444; }
-        
+
+        .risk-low {
+            background-color: #10B981;
+        }
+
+        .risk-medium {
+            background-color: #F59E0B;
+        }
+
+        .risk-high {
+            background-color: #EF4444;
+        }
+
         .alert-animation {
             animation: pulse 2s infinite;
         }
-        
+
         @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.5; }
-            100% { opacity: 1; }
+            0% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+
+            100% {
+                opacity: 1;
+            }
         }
-        
+
         .card-collapse-enter {
             max-height: 0;
             opacity: 0;
             overflow: hidden;
             transition: max-height 0.5s ease-in-out, opacity 0.3s ease-in-out;
         }
-        
+
         .card-collapse-enter-active {
             max-height: 1000px;
             opacity: 1;
         }
-        
+
         .dark .table-striped tr:nth-child(even) {
             background-color: rgba(55, 65, 81, 0.3);
         }
-        
+
         .table-striped tr:nth-child(even) {
             background-color: rgba(243, 244, 246, 0.5);
         }
@@ -71,7 +90,7 @@
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
             gap: 1rem;
         }
-        
+
         @media (max-width: 640px) {
             .dashboard-grid {
                 grid-template-columns: 1fr;
@@ -86,117 +105,164 @@
             z-index: 100;
             justify-content: center;
             align-items: center;
+            backdrop-filter: blur(10px);
         }
-        
+
         .modal.active {
             display: flex;
         }
+
+        body.modal-open {
+            overflow: hidden;
+        }
+
+        body.modal-open::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(10px);
+            z-index: 99;
+        }
+
+        .modal.active+.min-h-screen {
+            filter: blur(5px);
+        }
     </style>
 </head>
+
 <body class="bg-gray-100 dark:bg-dark-bg text-gray-800 dark:text-gray-200 transition-colors duration-300">
 
+    <!-- Authentication Modal -->
     <div id="authModal" class="modal active">
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-md">
             <h2 class="text-2xl font-bold mb-4 text-center">Login</h2>
             <form id="loginForm" class="space-y-4">
                 <div>
                     <label for="username" class="block text-sm font-medium mb-1">Username</label>
-                    <input type="text" id="username" class="w-full input-style" required>
+                    <input type="text" id="username"
+                        class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-base"
+                        required>
                 </div>
                 <div>
                     <label for="password" class="block text-sm font-medium mb-1">Password</label>
-                    <input type="password" id="password" class="w-full input-style" required>
+                    <input type="password" id="password"
+                        class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-base"
+                        required>
                 </div>
                 <div>
                     <label for="role" class="block text-sm font-medium mb-1">Role</label>
-                    <select id="role" class="w-full select-style">
+                    <select id="role"
+                        class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-base">
                         <option value="hr">HR</option>
                         <option value="manager">Manager</option>
                         <option value="auditor">Auditor</option>
                     </select>
                 </div>
-                <button type="submit" class="w-full bg-primary hover:bg-primary/90 text-white py-2 px-4 rounded-lg transition">Login</button>
+                <button type="submit"
+                    class="w-full bg-primary hover:bg-primary/90 text-white py-2 px-4 rounded-lg transition">Login</button>
                 <p class="text-xs text-center text-gray-500 dark:text-gray-400 mt-2">
-                    Demo: Enter any username/password. Select your role.
+                    Demo: Enter any username/password. Select your role to see different access levels.
                 </p>
             </form>
         </div>
     </div>
 
     <div class="min-h-screen flex flex-col">
+        <!-- Header -->
         <header class="bg-white dark:bg-gray-900 shadow-md">
-            <div class="container mx-auto p-4 flex md:flex-row justify-between items-center">
+            <div class="container mx-auto px-4 py-4 flex flex-col md:flex-row justify-between items-center">
                 <div class="flex items-center mb-2 md:mb-0">
                     <i class="fas fa-shield-alt text-primary text-2xl mr-3"></i>
                     <h1 class="text-xl md:text-2xl font-bold">Employee Behavior Monitoring</h1>
                 </div>
                 <div class="flex items-center space-x-2">
                     <div class="relative">
-                        <button id="alertsDropdown" class="dropdown-btn">
+                        <button id="alertsDropdown"
+                            class="p-2 rounded-full text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors relative">
                             <i class="fas fa-bell text-lg"></i>
-                            <span id="alertCount" class="absolute top-0 right-0 bg-risk-high text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">3</span>
+                            <span id="alertCount"
+                                class="absolute top-0 right-0 bg-risk-high text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">3</span>
                         </button>
-                        <div id="alertsPanel" class="hidden dropdown-panel">
-                            <div class="panel-header">
+                        <div id="alertsPanel"
+                            class="hidden absolute right-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-lg shadow-lg z-30 overflow-hidden">
+                            <div
+                                class="p-3 bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 flex justify-between items-center">
                                 <h3 class="font-semibold">Recent Alerts</h3>
-                                <button id="markAllRead" class="text-xs text-primary hover:underline">Mark all as read</button>
+                                <button id="markAllRead" class="text-xs text-primary hover:underline">Mark all as
+                                    read</button>
                             </div>
                             <div class="max-h-96 overflow-y-auto">
-                                <div class="panel-item">
+                                <div
+                                    class="p-3 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750 transition">
                                     <div class="flex items-center">
                                         <span class="risk-indicator risk-high"></span>
                                         <span class="font-medium">John Doe - Financial Discrepancy</span>
                                     </div>
-                                    <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Unauthorized transaction attempt at 5:32 PM</p>
+                                    <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Unauthorized transaction
+                                        attempt at 5:32 PM</p>
                                     <div class="flex justify-between items-center mt-2 text-xs">
                                         <span class="text-gray-500">10 min ago</span>
                                         <button class="text-primary hover:underline">View</button>
                                     </div>
                                 </div>
-                                <div class="panel-item">
+                                <div
+                                    class="p-3 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750 transition">
                                     <div class="flex items-center">
                                         <span class="risk-indicator risk-medium"></span>
                                         <span class="font-medium">Sarah Johnson - Vacation Avoidance</span>
                                     </div>
-                                    <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">No vacation taken in 12 months</p>
+                                    <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">No vacation taken in 12
+                                        months</p>
                                     <div class="flex justify-between items-center mt-2 text-xs">
                                         <span class="text-gray-500">1 hour ago</span>
                                         <button class="text-primary hover:underline">View</button>
                                     </div>
                                 </div>
-                                <div class="panel-item">
+                                <div
+                                    class="p-3 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750 transition">
                                     <div class="flex items-center">
                                         <span class="risk-indicator risk-high"></span>
                                         <span class="font-medium">Mike Williams - Unusual Secrecy</span>
                                     </div>
-                                    <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">After-hours access to payroll database</p>
+                                    <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">After-hours access to payroll
+                                        database</p>
                                     <div class="flex justify-between items-center mt-2 text-xs">
                                         <span class="text-gray-500">2 hours ago</span>
                                         <button class="text-primary hover:underline">View</button>
                                     </div>
                                 </div>
                             </div>
-                            <div class="panel-footer">
+                            <div class="p-2 bg-gray-100 dark:bg-gray-700 text-center">
                                 <a href="#" class="text-sm text-primary hover:underline">View All Alerts</a>
                             </div>
                         </div>
                     </div>
-                    <button id="theme-toggle" class="dropdown-btn">
+                    <button id="theme-toggle"
+                        class="p-2 rounded-full text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
                         <i class="fas fa-moon dark:hidden"></i>
                         <i class="fas fa-sun hidden dark:inline"></i>
                     </button>
                     <div class="relative">
-                        <button id="userDropdown" class="dropdown-btn">
-                            <img id="userAvatar" class="w-8 h-8 rounded-full" src="https://picsum.photos/200" alt="User avatar">
+                        <button id="userDropdown"
+                            class="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+                            <img id="userAvatar" class="w-8 h-8 rounded-full" src="https://picsum.photos/200"
+                                alt="User avatar">
                             <span id="userName" class="hidden md:inline font-medium">User Name</span>
                             <i class="fas fa-chevron-down text-xs"></i>
                         </button>
-                        <div id="userPanel" class="hidden dropdown-panel">
-                            <div class="panel-header">
-                                <p id="userRole" class="text-sm text-gray-600 dark:text-gray-400">Role: <span class="font-medium">Manager</span></p>
+                        <div id="userPanel"
+                            class="hidden absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg z-30">
+                            <div class="p-3 border-b border-gray-200 dark:border-gray-600">
+                                <p id="userRole" class="text-sm text-gray-600 dark:text-gray-400">Role: <span
+                                        class="font-medium">Manager</span></p>
                             </div>
                             <div class="p-2">
-                                <button id="logoutBtn" class="w-full text-left px-3 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition text-sm">
+                                <button id="logoutBtn"
+                                    class="w-full text-left px-3 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition text-sm">
                                     <i class="fas fa-sign-out-alt mr-2"></i> Logout
                                 </button>
                             </div>
@@ -206,9 +272,14 @@
             </div>
         </header>
 
-        <div id="toastContainer" class="fixed top-5 right-5 z-50 w-72 space-y-3"></div>
+        <!-- Floating Toast Notification Container -->
+        <div id="toastContainer" class="fixed top-5 right-5 z-50 w-72 space-y-3">
+            <!-- Toasts will be dynamically added here -->
+        </div>
 
-        <main class="flex-grow container mx-auto p-4">
+        <!-- Main Content -->
+        <main class="flex-grow container mx-auto px-4 py-6">
+            <!-- Dashboard Header -->
             <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                 <div>
                     <h2 class="text-2xl font-bold">Employee Monitoring Dashboard</h2>
@@ -216,40 +287,51 @@
                 </div>
                 <div class="flex flex-col sm:flex-row gap-3">
                     <div class="relative">
-                        <input type="text" placeholder="Search employees..." class="pl-10 pr-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-base w-full">
+                        <input type="text" placeholder="Search employees..."
+                            class="pl-10 pr-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-base w-full">
                         <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
                     </div>
-                    <button id="exportBtn" class="export-btn">
+                    <button id="exportBtn"
+                        class="flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-white py-2 px-4 rounded-lg transition">
                         <i class="fas fa-download"></i>
                         <span>Export Report</span>
                     </button>
                 </div>
             </div>
 
+            <!-- Risk Summary Indicators -->
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                <div class="risk-card risk-high">
-                    <i class="fas fa-exclamation-triangle text-xl"></i>
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 flex items-center">
+                    <div class="p-3 rounded-full bg-red-100 dark:bg-red-900/30 text-risk-high mr-4">
+                        <i class="fas fa-exclamation-triangle text-xl"></i>
+                    </div>
                     <div>
                         <p class="text-sm text-gray-600 dark:text-gray-400">High Risk</p>
                         <p class="text-xl font-bold">7 Employees</p>
                     </div>
                 </div>
-                <div class="risk-card risk-medium">
-                    <i class="fas fa-triangle-exclamation text-xl"></i>
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 flex items-center">
+                    <div class="p-3 rounded-full bg-yellow-100 dark:bg-yellow-900/30 text-risk-medium mr-4">
+                        <i class="fas fa-triangle-exclamation text-xl"></i>
+                    </div>
                     <div>
                         <p class="text-sm text-gray-600 dark:text-gray-400">Medium Risk</p>
                         <p class="text-xl font-bold">15 Employees</p>
                     </div>
                 </div>
-                <div class="risk-card risk-low">
-                    <i class="fas fa-check-circle text-xl"></i>
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 flex items-center">
+                    <div class="p-3 rounded-full bg-green-100 dark:bg-green-900/30 text-risk-low mr-4">
+                        <i class="fas fa-check-circle text-xl"></i>
+                    </div>
                     <div>
                         <p class="text-sm text-gray-600 dark:text-gray-400">Low Risk</p>
                         <p class="text-xl font-bold">128 Employees</p>
                     </div>
                 </div>
-                <div class="risk-card blue-500">
-                    <i class="fas fa-bell text-xl"></i>
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 flex items-center">
+                    <div class="p-3 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-500 mr-4">
+                        <i class="fas fa-bell text-xl"></i>
+                    </div>
                     <div>
                         <p class="text-sm text-gray-600 dark:text-gray-400">Active Alerts</p>
                         <p class="text-xl font-bold">12 Alerts</p>
@@ -257,6 +339,7 @@
                 </div>
             </div>
 
+            <!-- Department Filter Tabs -->
             <div class="border-b border-gray-200 dark:border-gray-700">
                 <nav class="-mb-px flex space-x-8" aria-label="Tabs">
                     <button class="tab-btn active" data-tab="all">All Departments</button>
@@ -267,6 +350,7 @@
                 </nav>
             </div>
 
+            <!-- Employee Table -->
             <div class="mt-6">
                 <div class="overflow-x-auto">
                     <table class="min-w-full leading-normal table-striped">
@@ -303,41 +387,39 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // --- Utility Functions ---
-            const togglePanel = (panelId) => {
-                const panel = document.getElementById(panelId);
-                panel.classList.toggle('hidden');
-            };
+            const authModal = document.getElementById('authModal');
+            const body = document.body;
 
-            // --- Dropdown Handlers ---
-            document.querySelectorAll('.dropdown-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    const panelId = this.id.replace('Dropdown', 'Panel');
-                    togglePanel(panelId);
-                });
-            });
-
-            // --- Theme Toggle ---
-            document.getElementById('theme-toggle').addEventListener('click', () => {
-                document.documentElement.classList.toggle('dark');
-            });
-
-            // --- Login Form ---
             document.getElementById('loginForm').addEventListener('submit', (e) => {
                 e.preventDefault();
-                document.getElementById('authModal').classList.remove('active');
+                authModal.classList.remove('active');
+                body.classList.remove('modal-open');
             });
 
-            // --- Tab Switching ---
             document.querySelectorAll('.tab-btn').forEach(tab => {
-                tab.addEventListener('click', function() {
+                tab.addEventListener('click', function () {
                     document.querySelectorAll('.tab-btn').forEach(t => t.classList.remove('active'));
                     this.classList.add('active');
                 });
             });
+
+            document.querySelectorAll('.dropdown-btn').forEach(btn => {
+                btn.addEventListener('click', function () {
+                    const panelId = this.id.replace('Dropdown', 'Panel');
+                    const panel = document.getElementById(panelId);
+                    panel.classList.toggle('hidden');
+                });
+            });
+
+            document.getElementById('theme-toggle').addEventListener('click', () => {
+                document.documentElement.classList.toggle('dark');
+            });
+
+            authModal.classList.add('active');
+            body.classList.add('modal-open');
         });
     </script>
-    
+
     <style>
         .input-style {
             @apply w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-base;
@@ -392,4 +474,5 @@
         }
     </style>
 </body>
+
 </html>
