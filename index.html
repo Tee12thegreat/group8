@@ -1,1426 +1,279 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Employee Behavior Monitoring Dashboard</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.6.1/dist/socket.io.min.js"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        primary: '#5D5CDE',
-                        'dark-bg': '#181818',
-                        'light-bg': '#FFFFFF',
-                        'risk-low': '#10B981',
-                        'risk-medium': '#F59E0B',
-                        'risk-high': '#EF4444',
-                    }
-                }
-            }
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Employee Behavior Monitoring Dashboard</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.6.1/dist/socket.io.min.js"></script>
+<script>
+  tailwind.config = {
+    darkMode: 'class',
+    theme: {
+      extend: {
+        colors: {
+          primary: '#5D5CDE',
+          'dark-bg': '#181818',
+          'risk-low': '#10B981',
+          'risk-medium': '#F59E0B',
+          'risk-high': '#EF4444',
         }
-    </script>
-    <style>
-        .risk-indicator {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            display: inline-block;
-            margin-right: 6px;
-        }
-        .risk-low { background-color: #10B981; }
-        .risk-medium { background-color: #F59E0B; }
-        .risk-high { background-color: #EF4444; }
-        
-        .alert-animation {
-            animation: pulse 2s infinite;
-        }
-        
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.5; }
-            100% { opacity: 1; }
-        }
-        
-        .card-collapse-enter {
-            max-height: 0;
-            opacity: 0;
-            overflow: hidden;
-            transition: max-height 0.5s ease-in-out, opacity 0.3s ease-in-out;
-        }
-        
-        .card-collapse-enter-active {
-            max-height: 1000px;
-            opacity: 1;
-        }
-        
-        .dark .table-striped tr:nth-child(even) {
-            background-color: rgba(55, 65, 81, 0.3);
-        }
-        
-        .table-striped tr:nth-child(even) {
-            background-color: rgba(243, 244, 246, 0.5);
-        }
-
-        /* Responsive card grid layout */
-        .dashboard-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 1rem;
-        }
-        
-        @media (max-width: 640px) {
-            .dashboard-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        /* Authentication modal styles */
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            z-index: 100;
-            justify-content: center;
-            align-items: center;
-        }
-        
-        .modal.active {
-            display: flex;
-        }
-    </style>
+      }
+    }
+  };
+</script>
+<style>
+  .risk-indicator {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 6px;
+  }
+  .risk-low { background-color: #10B981; }
+  .risk-medium { background-color: #F59E0B; }
+  .risk-high { background-color: #EF4444; }
+  .alert-animation { animation: pulse 2s infinite; }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+  .card-collapse-enter {
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    transition: max-height 0.5s ease, opacity 0.3s ease;
+  }
+  .card-collapse-enter-active {
+    max-height: 1000px;
+    opacity: 1;
+  }
+  .dark .table-striped tr:nth-child(even) {
+    background-color: rgba(55, 65, 81, 0.3);
+  }
+  .table-striped tr:nth-child(even) {
+    background-color: rgba(243, 244, 246, 0.5);
+  }
+  .dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1rem;
+  }
+  @media (max-width: 640px) {
+    .dashboard-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+  .modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 100;
+    justify-content: center;
+    align-items: center;
+  }
+  .modal.active {
+    display: flex;
+  }
+</style>
 </head>
 <body class="bg-gray-100 dark:bg-dark-bg text-gray-800 dark:text-gray-200 transition-colors duration-300">
-    <!-- Authentication Modal -->
-    <div id="authModal" class="modal active">
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-md">
-            <h2 class="text-2xl font-bold mb-4 text-center">Login</h2>
-            <form id="loginForm" class="space-y-4">
-                <div>
-                    <label for="username" class="block text-sm font-medium mb-1">Username</label>
-                    <input type="text" id="username" class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-base" required>
-                </div>
-                <div>
-                    <label for="password" class="block text-sm font-medium mb-1">Password</label>
-                    <input type="password" id="password" class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-base" required>
-                </div>
-                <div>
-                    <label for="role" class="block text-sm font-medium mb-1">Role</label>
-                    <select id="role" class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-base">
-                        <option value="hr">HR</option>
-                        <option value="manager">Manager</option>
-                        <option value="auditor">Auditor</option>
-                    </select>
-                </div>
-                <button type="submit" class="w-full bg-primary hover:bg-primary/90 text-white py-2 px-4 rounded-lg transition">Login</button>
-                <p class="text-xs text-center text-gray-500 dark:text-gray-400 mt-2">
-                    Demo: Enter any username/password. Select your role to see different access levels.
-                </p>
-            </form>
+
+<!-- Authentication Modal -->
+<div id="authModal" class="modal active">
+  <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 max-w-md w-full">
+    <h2 class="text-2xl font-bold mb-4 text-center">Login</h2>
+    <form id="loginForm" class="space-y-4">
+      <div>
+        <label for="username" class="block text-sm font-medium mb-1">Username</label>
+        <input type="text" id="username" required class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-base" />
+      </div>
+      <div>
+        <label for="password" class="block text-sm font-medium mb-1">Password</label>
+        <input type="password" id="password" required class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-base" />
+      </div>
+      <div>
+        <label for="role" class="block text-sm font-medium mb-1">Role</label>
+        <select id="role" class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-base">
+          <option value="hr">HR</option>
+          <option value="manager">Manager</option>
+          <option value="auditor">Auditor</option>
+        </select>
+      </div>
+      <button type="submit" class="w-full bg-primary hover:bg-primary/90 text-white py-2 rounded-lg transition">Login</button>
+      <p class="text-xs text-center text-gray-500 dark:text-gray-400 mt-2">Demo: Enter any username/password. Select your role to see different access levels.</p>
+    </form>
+  </div>
+</div>
+
+<div class="min-h-screen flex flex-col">
+  <!-- Header -->
+  <header class="bg-white dark:bg-gray-900 shadow-md">
+    <div class="container mx-auto px-4 py-4 flex flex-col md:flex-row justify-between items-center">
+      <div class="flex items-center mb-2 md:mb-0">
+        <i class="fas fa-shield-alt text-primary text-2xl mr-3"></i>
+        <h1 class="text-xl md:text-2xl font-bold">Employee Behavior Monitoring</h1>
+      </div>
+      <div class="flex items-center space-x-2 relative">
+        <button id="alertsDropdown" class="p-2 rounded-full text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition relative">
+          <i class="fas fa-bell text-lg"></i>
+          <span id="alertCount" class="absolute top-0 right-0 bg-risk-high text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">3</span>
+        </button>
+        <div id="alertsPanel" class="hidden absolute right-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-lg shadow-lg z-30 overflow-hidden">
+          <div class="p-3 bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 flex justify-between items-center">
+            <h3 class="font-semibold">Recent Alerts</h3>
+            <button id="markAllRead" class="text-xs text-primary hover:underline">Mark all as read</button>
+          </div>
+          <div class="max-h-96 overflow-y-auto">
+            <div class="p-3 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750 transition">
+              <div class="flex items-center">
+                <span class="risk-indicator risk-high"></span>
+                <span class="font-medium">John Doe - Financial Discrepancy</span>
+              </div>
+              <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Unauthorized transaction attempt at 5:32 PM</p>
+              <div class="flex justify-between items-center mt-2 text-xs">
+                <span class="text-gray-500">10 min ago</span>
+                <button class="text-primary hover:underline">View</button>
+              </div>
+            </div>
+            <div class="p-3 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750 transition">
+              <div class="flex items-center">
+                <span class="risk-indicator risk-medium"></span>
+                <span class="font-medium">Sarah Johnson - Vacation Avoidance</span>
+              </div>
+              <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">No vacation taken in 12 months</p>
+              <div class="flex justify-between items-center mt-2 text-xs">
+                <span class="text-gray-500">1 hour ago</span>
+                <button class="text-primary hover:underline">View</button>
+              </div>
+            </div>
+            <div class="p-3 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750 transition">
+              <div class="flex items-center">
+                <span class="risk-indicator risk-high"></span>
+                <span class="font-medium">Mike Williams - Unusual Secrecy</span>
+              </div>
+              <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">After-hours access to payroll database</p>
+              <div class="flex justify-between items-center mt-2 text-xs">
+                <span class="text-gray-500">2 hours ago</span>
+                <button class="text-primary hover:underline">View</button>
+              </div>
+            </div>
+          </div>
+          <div class="p-2 bg-gray-100 dark:bg-gray-700 text-center">
+            <a href="#" class="text-sm text-primary hover:underline">View All Alerts</a>
+          </div>
         </div>
+        <button id="theme-toggle" class="p-2 rounded-full text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition ml-2">
+          <i class="fas fa-moon dark:hidden"></i>
+          <i class="fas fa-sun hidden dark:inline"></i>
+        </button>
+        <div class="relative ml-2">
+          <button id="userDropdown" class="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition">
+            <img id="userAvatar" class="w-8 h-8 rounded-full" src="https://picsum.photos/200" alt="User avatar" />
+            <span id="userName" class="hidden md:inline font-medium">User Name</span>
+            <i class="fas fa-chevron-down text-xs"></i>
+          </button>
+          <div id="userPanel" class="hidden absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg z-30">
+            <div class="p-3 border-b border-gray-200 dark:border-gray-600">
+              <p id="userRole" class="text-sm text-gray-600 dark:text-gray-400">Role: <span class="font-medium">Manager</span></p>
+            </div>
+            <div class="p-2">
+              <button id="logoutBtn" class="w-full text-left px-3 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition text-sm">
+                <i class="fas fa-sign-out-alt mr-2"></i> Logout
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Toast Notifications -->
+  <div id="toastContainer" class="fixed top-5 right-5 z-50 w-72 space-y-3"></div>
+
+  <!-- Main Content -->
+  <main class="flex-grow container mx-auto px-4 py-6">
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+      <div>
+        <h2 class="text-2xl font-bold">Employee Monitoring Dashboard</h2>
+        <p class="text-gray-600 dark:text-gray-400">Real-time behavioral risk indicators</p>
+      </div>
+      <div class="flex flex-col sm:flex-row gap-3">
+        <div class="relative">
+          <input type="text" placeholder="Search employees..." class="pl-10 pr-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-base w-full" />
+          <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+        </div>
+        <button id="exportBtn" class="flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-white py-2 px-4 rounded-lg transition">
+          <i class="fas fa-download"></i> Export Report
+        </button>
+      </div>
     </div>
 
-    <div class="min-h-screen flex flex-col">
-        <!-- Header -->
-        <header class="bg-white dark:bg-gray-900 shadow-md">
-            <div class="container mx-auto px-4 py-4 flex flex-col md:flex-row justify-between items-center">
-                <div class="flex items-center mb-2 md:mb-0">
-                    <i class="fas fa-shield-alt text-primary text-2xl mr-3"></i>
-                    <h1 class="text-xl md:text-2xl font-bold">Employee Behavior Monitoring</h1>
-                </div>
-                <div class="flex items-center space-x-2">
-                    <div class="relative">
-                        <button id="alertsDropdown" class="p-2 rounded-full text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors relative">
-                            <i class="fas fa-bell text-lg"></i>
-                            <span id="alertCount" class="absolute top-0 right-0 bg-risk-high text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">3</span>
-                        </button>
-                        <div id="alertsPanel" class="hidden absolute right-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-lg shadow-lg z-30 overflow-hidden">
-                            <div class="p-3 bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 flex justify-between items-center">
-                                <h3 class="font-semibold">Recent Alerts</h3>
-                                <button id="markAllRead" class="text-xs text-primary hover:underline">Mark all as read</button>
-                            </div>
-                            <div class="max-h-96 overflow-y-auto">
-                                <div class="p-3 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750 transition">
-                                    <div class="flex items-center">
-                                        <span class="risk-indicator risk-high"></span>
-                                        <span class="font-medium">John Doe - Financial Discrepancy</span>
-                                    </div>
-                                    <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Unauthorized transaction attempt at 5:32 PM</p>
-                                    <div class="flex justify-between items-center mt-2 text-xs">
-                                        <span class="text-gray-500">10 min ago</span>
-                                        <button class="text-primary hover:underline">View</button>
-                                    </div>
-                                </div>
-                                <div class="p-3 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750 transition">
-                                    <div class="flex items-center">
-                                        <span class="risk-indicator risk-medium"></span>
-                                        <span class="font-medium">Sarah Johnson - Vacation Avoidance</span>
-                                    </div>
-                                    <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">No vacation taken in 12 months</p>
-                                    <div class="flex justify-between items-center mt-2 text-xs">
-                                        <span class="text-gray-500">1 hour ago</span>
-                                        <button class="text-primary hover:underline">View</button>
-                                    </div>
-                                </div>
-                                <div class="p-3 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750 transition">
-                                    <div class="flex items-center">
-                                        <span class="risk-indicator risk-high"></span>
-                                        <span class="font-medium">Mike Williams - Unusual Secrecy</span>
-                                    </div>
-                                    <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">After-hours access to payroll database</p>
-                                    <div class="flex justify-between items-center mt-2 text-xs">
-                                        <span class="text-gray-500">2 hours ago</span>
-                                        <button class="text-primary hover:underline">View</button>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="p-2 bg-gray-100 dark:bg-gray-700 text-center">
-                                <a href="#" class="text-sm text-primary hover:underline">View All Alerts</a>
-                            </div>
-                        </div>
-                    </div>
-                    <button id="theme-toggle" class="p-2 rounded-full text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
-                        <i class="fas fa-moon dark:hidden"></i>
-                        <i class="fas fa-sun hidden dark:inline"></i>
-                    </button>
-                    <div class="relative">
-                        <button id="userDropdown" class="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
-                            <img id="userAvatar" class="w-8 h-8 rounded-full" src="https://picsum.photos/200" alt="User avatar">
-                            <span id="userName" class="hidden md:inline font-medium">User Name</span>
-                            <i class="fas fa-chevron-down text-xs"></i>
-                        </button>
-                        <div id="userPanel" class="hidden absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg z-30">
-                            <div class="p-3 border-b border-gray-200 dark:border-gray-600">
-                                <p id="userRole" class="text-sm text-gray-600 dark:text-gray-400">Role: <span class="font-medium">Manager</span></p>
-                            </div>
-                            <div class="p-2">
-                                <button id="logoutBtn" class="w-full text-left px-3 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition text-sm">
-                                    <i class="fas fa-sign-out-alt mr-2"></i> Logout
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </header>
-
-        <!-- Floating Toast Notification Container -->
-        <div id="toastContainer" class="fixed top-5 right-5 z-50 w-72 space-y-3">
-            <!-- Toasts will be dynamically added here -->
-        </div>
-
-        <!-- Main Content -->
-        <main class="flex-grow container mx-auto px-4 py-6">
-            <!-- Dashboard Header -->
-            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-                <div>
-                    <h2 class="text-2xl font-bold">Employee Monitoring Dashboard</h2>
-                    <p class="text-gray-600 dark:text-gray-400">Real-time behavioral risk indicators</p>
-                </div>
-                <div class="flex flex-col sm:flex-row gap-3">
-                    <div class="relative">
-                        <input type="text" placeholder="Search employees..." class="pl-10 pr-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-base w-full">
-                        <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
-                    </div>
-                    <button id="exportBtn" class="flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-white py-2 px-4 rounded-lg transition">
-                        <i class="fas fa-download"></i>
-                        <span>Export Report</span>
-                    </button>
-                </div>
-            </div>
-
-            <!-- Risk Summary Indicators -->
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 flex items-center">
-                    <div class="p-3 rounded-full bg-red-100 dark:bg-red-900/30 text-risk-high mr-4">
-                        <i class="fas fa-exclamation-triangle text-xl"></i>
-                    </div>
-                    <div>
-                        <p class="text-sm text-gray-600 dark:text-gray-400">High Risk</p>
-                        <p class="text-xl font-bold">7 Employees</p>
-                    </div>
-                </div>
-                <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 flex items-center">
-                    <div class="p-3 rounded-full bg-yellow-100 dark:bg-yellow-900/30 text-risk-medium mr-4">
-                        <i class="fas fa-triangle-exclamation text-xl"></i>
-                    </div>
-                    <div>
-                        <p class="text-sm text-gray-600 dark:text-gray-400">Medium Risk</p>
-                        <p class="text-xl font-bold">15 Employees</p>
-                    </div>
-                </div>
-                <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 flex items-center">
-                    <div class="p-3 rounded-full bg-green-100 dark:bg-green-900/30 text-risk-low mr-4">
-                        <i class="fas fa-check-circle text-xl"></i>
-                    </div>
-                    <div>
-                        <p class="text-sm text-gray-600 dark:text-gray-400">Low Risk</p>
-                        <p class="text-xl font-bold">128 Employees</p>
-                    </div>
-                </div>
-                <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 flex items-center">
-                    <div class="p-3 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-500 mr-4">
-                        <i class="fas fa-bell text-xl"></i>
-                    </div>
-                    <div>
-                        <p class="text-sm text-gray-600 dark:text-gray-400">Active Alerts</p>
-                        <p class="text-xl font-bold">12 Alerts</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Department Filter Tabs -->
-            <div class="border-b border-gray-200 dark:border-gray-700 mb-6">
-                <ul class="flex flex-wrap -mb-px text-sm font-medium text-center">
-                    <li class="mr-2">
-                        <a href="#" class="inline-flex items-center justify-center p-4 rounded-t-lg border-b-2 border-primary text-primary active">
-                            All Departments
-                        </a>
-                    </li>
-                    <li class="mr-2">
-                        <a href="#" class="inline-flex items-center justify-center p-4 rounded-t-lg border-b-2 border-transparent hover:border-gray-300 dark:hover:border-gray-500 text-gray-500 dark:text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
-                            Finance
-                        </a>
-                    </li>
-                    <li class="mr-2">
-                        <a href="#" class="inline-flex items-center justify-center p-4 rounded-t-lg border-b-2 border-transparent hover:border-gray-300 dark:hover:border-gray-500 text-gray-500 dark:text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
-                            IT
-                        </a>
-                    </li>
-                    <li class="mr-2">
-                        <a href="#" class="inline-flex items-center justify-center p-4 rounded-t-lg border-b-2 border-transparent hover:border-gray-300 dark:hover:border-gray-500 text-gray-500 dark:text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
-                            HR
-                        </a>
-                    </li>
-                    <li>
-                        <a href="#" class="inline-flex items-center justify-center p-4 rounded-t-lg border-b-2 border-transparent hover:border-gray-300 dark:hover:border-gray-500 text-gray-500 dark:text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
-                            Operations
-                        </a>
-                    </li>
-                </ul>
-            </div>
-
-            <!-- Behavior Indicator Cards -->
-            <div class="dashboard-grid mb-6">
-                <!-- Unusual Secrecy Card -->
-                <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
-                    <div class="p-4 bg-gradient-to-r from-purple-500 to-purple-700 text-white flex justify-between items-center">
-                        <div class="flex items-center">
-                            <i class="fas fa-user-secret text-xl mr-3"></i>
-                            <h3 class="font-bold">Unusual Secrecy</h3>
-                        </div>
-                        <button class="card-toggle p-1 hover:bg-white/10 rounded">
-                            <i class="fas fa-chevron-down"></i>
-                        </button>
-                    </div>
-                    <div class="card-content">
-                        <div class="p-4">
-                            <div class="flex items-center justify-between mb-3">
-                                <span class="text-sm font-medium">Risk Level</span>
-                                <span class="px-2 py-1 bg-red-100 dark:bg-red-900/30 text-risk-high text-xs rounded-full font-semibold flex items-center">
-                                    <span class="risk-indicator risk-high"></span>High
-                                </span>
-                            </div>
-                            <div class="space-y-2 mb-4">
-                                <div class="flex justify-between items-center">
-                                    <span class="text-sm">After-hours System Access</span>
-                                    <span class="text-sm font-medium">3 incidents</span>
-                                </div>
-                                <div class="flex justify-between items-center">
-                                    <span class="text-sm">Unauthorized Downloads</span>
-                                    <span class="text-sm font-medium">2 incidents</span>
-                                </div>
-                                <div class="flex justify-between items-center">
-                                    <span class="text-sm">Restricted File Access</span>
-                                    <span class="text-sm font-medium">1 incident</span>
-                                </div>
-                            </div>
-                            <div class="border-t border-gray-200 dark:border-gray-700 pt-3">
-                                <h4 class="font-semibold text-sm mb-2">Flagged Employees</h4>
-                                <div class="space-y-2">
-                                    <div class="p-2 bg-red-50 dark:bg-red-900/20 rounded border-l-2 border-risk-high flex justify-between">
-                                        <div class="flex items-center">
-                                            <span class="text-sm font-medium mr-2">Mike Williams</span>
-                                            <span class="text-xs text-gray-500 dark:text-gray-400">IT Department</span>
-                                        </div>
-                                        <button class="text-primary hover:underline text-xs">Details</button>
-                                    </div>
-                                    <div class="p-2 bg-red-50 dark:bg-red-900/20 rounded border-l-2 border-risk-high flex justify-between">
-                                        <div class="flex items-center">
-                                            <span class="text-sm font-medium mr-2">Lisa Chen</span>
-                                            <span class="text-xs text-gray-500 dark:text-gray-400">Finance</span>
-                                        </div>
-                                        <button class="text-primary hover:underline text-xs">Details</button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="bg-gray-50 dark:bg-gray-900/30 p-3 text-center">
-                            <button class="text-primary hover:underline text-sm">View Full Report</button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Vacation Avoidance Card -->
-                <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
-                    <div class="p-4 bg-gradient-to-r from-blue-500 to-blue-700 text-white flex justify-between items-center">
-                        <div class="flex items-center">
-                            <i class="fas fa-plane-slash text-xl mr-3"></i>
-                            <h3 class="font-bold">Vacation Avoidance</h3>
-                        </div>
-                        <button class="card-toggle p-1 hover:bg-white/10 rounded">
-                            <i class="fas fa-chevron-down"></i>
-                        </button>
-                    </div>
-                    <div class="card-content">
-                        <div class="p-4">
-                            <div class="flex items-center justify-between mb-3">
-                                <span class="text-sm font-medium">Risk Level</span>
-                                <span class="px-2 py-1 bg-yellow-100 dark:bg-yellow-900/30 text-risk-medium text-xs rounded-full font-semibold flex items-center">
-                                    <span class="risk-indicator risk-medium"></span>Medium
-                                </span>
-                            </div>
-                            <div class="space-y-2 mb-4">
-                                <div class="flex justify-between items-center">
-                                    <span class="text-sm">Low PTO Usage (vs Team Avg)</span>
-                                    <span class="text-sm font-medium">4 employees</span>
-                                </div>
-                                <div class="flex justify-between items-center">
-                                    <span class="text-sm">Declined Vacation Requests</span>
-                                    <span class="text-sm font-medium">3 incidents</span>
-                                </div>
-                                <div class="flex justify-between items-center">
-                                    <span class="text-sm">No Leave >9 Months</span>
-                                    <span class="text-sm font-medium">2 employees</span>
-                                </div>
-                            </div>
-                            <div class="border-t border-gray-200 dark:border-gray-700 pt-3">
-                                <h4 class="font-semibold text-sm mb-2">Flagged Employees</h4>
-                                <div class="space-y-2">
-                                    <div class="p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded border-l-2 border-risk-medium flex justify-between">
-                                        <div class="flex items-center">
-                                            <span class="text-sm font-medium mr-2">Sarah Johnson</span>
-                                            <span class="text-xs text-gray-500 dark:text-gray-400">Finance</span>
-                                        </div>
-                                        <button class="text-primary hover:underline text-xs">Details</button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="bg-gray-50 dark:bg-gray-900/30 p-3 text-center">
-                            <button class="text-primary hover:underline text-sm">View Full Report</button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Tardiness/Absences Card -->
-                <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
-                    <div class="p-4 bg-gradient-to-r from-green-500 to-green-700 text-white flex justify-between items-center">
-                        <div class="flex items-center">
-                            <i class="fas fa-clock text-xl mr-3"></i>
-                            <h3 class="font-bold">Tardiness & Absences</h3>
-                        </div>
-                        <button class="card-toggle p-1 hover:bg-white/10 rounded">
-                            <i class="fas fa-chevron-down"></i>
-                        </button>
-                    </div>
-                    <div class="card-content">
-                        <div class="p-4">
-                            <div class="flex items-center justify-between mb-3">
-                                <span class="text-sm font-medium">Risk Level</span>
-                                <span class="px-2 py-1 bg-green-100 dark:bg-green-900/30 text-risk-low text-xs rounded-full font-semibold flex items-center">
-                                    <span class="risk-indicator risk-low"></span>Low
-                                </span>
-                            </div>
-                            <div class="space-y-2 mb-4">
-                                <div class="flex justify-between items-center">
-                                    <span class="text-sm">Frequent Late Arrivals</span>
-                                    <span class="text-sm font-medium">5 employees</span>
-                                </div>
-                                <div class="flex justify-between items-center">
-                                    <span class="text-sm">Unexplained Absences</span>
-                                    <span class="text-sm font-medium">2 incidents</span>
-                                </div>
-                                <div class="flex justify-between items-center">
-                                    <span class="text-sm">Departmental Deviation</span>
-                                    <span class="text-sm font-medium">Minor</span>
-                                </div>
-                            </div>
-                            <div class="border-t border-gray-200 dark:border-gray-700 pt-3">
-                                <h4 class="font-semibold text-sm mb-2">Attendance Chart (Last 30 Days)</h4>
-                                <canvas id="attendanceChart" height="120"></canvas>
-                            </div>
-                        </div>
-                        <div class="bg-gray-50 dark:bg-gray-900/30 p-3 text-center">
-                            <button class="text-primary hover:underline text-sm">View Full Report</button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Financial Discrepancies Card -->
-                <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
-                    <div class="p-4 bg-gradient-to-r from-red-500 to-red-700 text-white flex justify-between items-center">
-                        <div class="flex items-center">
-                            <i class="fas fa-file-invoice-dollar text-xl mr-3"></i>
-                            <h3 class="font-bold">Financial Discrepancies</h3>
-                        </div>
-                        <button class="card-toggle p-1 hover:bg-white/10 rounded">
-                            <i class="fas fa-chevron-down"></i>
-                        </button>
-                    </div>
-                    <div class="card-content">
-                        <div class="p-4">
-                            <div class="flex items-center justify-between mb-3">
-                                <span class="text-sm font-medium">Risk Level</span>
-                                <span class="px-2 py-1 bg-red-100 dark:bg-red-900/30 text-risk-high text-xs rounded-full font-semibold flex items-center alert-animation">
-                                    <span class="risk-indicator risk-high"></span>High
-                                </span>
-                            </div>
-                            <div class="space-y-2 mb-4">
-                                <div class="flex justify-between items-center">
-                                    <span class="text-sm">Excessive Adjustments</span>
-                                    <span class="text-sm font-medium">7 incidents</span>
-                                </div>
-                                <div class="flex justify-between items-center">
-                                    <span class="text-sm">Voided Entries</span>
-                                    <span class="text-sm font-medium">4 incidents</span>
-                                </div>
-                                <div class="flex justify-between items-center">
-                                    <span class="text-sm">Unauthorized Transfers</span>
-                                    <span class="text-sm font-medium text-risk-high">2 incidents</span>
-                                </div>
-                            </div>
-                            <div class="border-t border-gray-200 dark:border-gray-700 pt-3">
-                                <h4 class="font-semibold text-sm mb-2">Flagged Employees</h4>
-                                <div class="space-y-2">
-                                    <div class="p-2 bg-red-50 dark:bg-red-900/20 rounded border-l-2 border-risk-high flex justify-between">
-                                        <div class="flex items-center">
-                                            <span class="text-sm font-medium mr-2">John Doe</span>
-                                            <span class="text-xs text-gray-500 dark:text-gray-400">Finance</span>
-                                        </div>
-                                        <button class="text-primary hover:underline text-xs">Details</button>
-                                    </div>
-                                    <div class="p-2 bg-red-50 dark:bg-red-900/20 rounded border-l-2 border-risk-high flex justify-between">
-                                        <div class="flex items-center">
-                                            <span class="text-sm font-medium mr-2">Robert Smith</span>
-                                            <span class="text-xs text-gray-500 dark:text-gray-400">Accounting</span>
-                                        </div>
-                                        <button class="text-primary hover:underline text-xs">Details</button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="bg-gray-50 dark:bg-gray-900/30 p-3 text-center">
-                            <button class="text-primary hover:underline text-sm">View Full Report</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Recent Alerts Section -->
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow mb-6">
-                <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-                    <h3 class="font-bold text-lg">Recent Alerts</h3>
-                    <div class="flex items-center">
-                        <button class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300">
-                            <i class="fas fa-filter mr-1"></i>
-                            <span class="text-sm">Filter</span>
-                        </button>
-                        <button class="ml-4 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300">
-                            <i class="fas fa-download mr-1"></i>
-                            <span class="text-sm">Export</span>
-                        </button>
-                    </div>
-                </div>
-                <div class="overflow-x-auto">
-                    <table class="min-w-full table-striped">
-                        <thead class="bg-gray-50 dark:bg-gray-700">
-                            <tr>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Timestamp</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Employee</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Department</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Alert Type</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Risk Level</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm">2023-06-12 17:32:45</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">John Doe</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm">Finance</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm">Unauthorized Transaction</td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <span class="px-2 py-1 bg-red-100 dark:bg-red-900/30 text-risk-high text-xs rounded-full">High</span>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <span class="px-2 py-1 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300 text-xs rounded-full">Under Review</span>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm">
-                                    <button class="text-primary hover:underline">Review</button>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm">2023-06-12 15:47:21</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">Sarah Johnson</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm">Finance</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm">Vacation Avoidance</td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <span class="px-2 py-1 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300 text-xs rounded-full">Medium</span>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <span class="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 text-xs rounded-full">New</span>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm">
-                                    <button class="text-primary hover:underline">Review</button>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm">2023-06-12 14:25:33</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">Mike Williams</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm">IT</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm">After-hours Database Access</td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <span class="px-2 py-1 bg-red-100 dark:bg-red-900/30 text-risk-high text-xs rounded-full">High</span>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <span class="px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 text-xs rounded-full">Resolved</span>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm">
-                                    <button class="text-primary hover:underline">View Details</button>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm">2023-06-12 11:12:09</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">Lisa Chen</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm">Finance</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm">Restricted File Access</td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <span class="px-2 py-1 bg-red-100 dark:bg-red-900/30 text-risk-high text-xs rounded-full">High</span>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <span class="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 text-xs rounded-full">New</span>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm">
-                                    <button class="text-primary hover:underline">Review</button>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm">2023-06-12 09:47:53</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">Robert Smith</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm">Accounting</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm">Excessive Adjustments</td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <span class="px-2 py-1 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300 text-xs rounded-full">Medium</span>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <span class="px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 text-xs rounded-full">Resolved</span>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm">
-                                    <button class="text-primary hover:underline">View Details</button>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-                <div class="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-between items-center">
-                    <span class="text-sm text-gray-600 dark:text-gray-400">Showing 5 of 12 alerts</span>
-                    <div class="flex items-center space-x-2">
-                        <button class="px-3 py-1 rounded border border-gray-300 dark:border-gray-600 text-sm">Previous</button>
-                        <button class="px-3 py-1 rounded bg-primary text-white text-sm">1</button>
-                        <button class="px-3 py-1 rounded border border-gray-300 dark:border-gray-600 text-sm">2</button>
-                        <button class="px-3 py-1 rounded border border-gray-300 dark:border-gray-600 text-sm">3</button>
-                        <button class="px-3 py-1 rounded border border-gray-300 dark:border-gray-600 text-sm">Next</button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Rules Configuration Section (Only visible to Admins/HR) -->
-            <div id="rulesConfig" class="bg-white dark:bg-gray-800 rounded-lg shadow mb-6">
-                <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-                    <h3 class="font-bold text-lg">Rules Configuration</h3>
-                    <button class="text-white bg-primary hover:bg-primary/90 px-4 py-2 rounded-lg text-sm">
-                        <i class="fas fa-plus mr-1"></i> Add New Rule
-                    </button>
-                </div>
-                <div class="overflow-x-auto">
-                    <table class="min-w-full table-striped">
-                        <thead class="bg-gray-50 dark:bg-gray-700">
-                            <tr>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Rule Name</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Trigger Conditions</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Risk Level</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">After-hours System Access</td>
-                                <td class="px-6 py-4 text-sm">Access to systems outside regular hours (7am-7pm)</td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <select class="text-sm border border-gray-300 dark:border-gray-600 rounded p-1 bg-transparent">
-                                        <option>High</option>
-                                        <option>Medium</option>
-                                        <option>Low</option>
-                                    </select>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <label class="relative inline-flex items-center cursor-pointer">
-                                        <input type="checkbox" value="" class="sr-only peer" checked>
-                                        <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-primary"></div>
-                                    </label>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm">
-                                    <button class="text-primary hover:underline mr-3">Edit</button>
-                                    <button class="text-red-500 hover:underline">Delete</button>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">Vacation Avoidance</td>
-                                <td class="px-6 py-4 text-sm">No vacation taken for >9 months OR PTO usage <50% of team average</td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <select class="text-sm border border-gray-300 dark:border-gray-600 rounded p-1 bg-transparent">
-                                        <option>High</option>
-                                        <option selected>Medium</option>
-                                        <option>Low</option>
-                                    </select>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <label class="relative inline-flex items-center cursor-pointer">
-                                        <input type="checkbox" value="" class="sr-only peer" checked>
-                                        <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-primary"></div>
-                                    </label>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm">
-                                    <button class="text-primary hover:underline mr-3">Edit</button>
-                                    <button class="text-red-500 hover:underline">Delete</button>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">Unauthorized Financial Access</td>
-                                <td class="px-6 py-4 text-sm">Access to financial systems outside of assigned role permissions</td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <select class="text-sm border border-gray-300 dark:border-gray-600 rounded p-1 bg-transparent">
-                                        <option selected>High</option>
-                                        <option>Medium</option>
-                                        <option>Low</option>
-                                    </select>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <label class="relative inline-flex items-center cursor-pointer">
-                                        <input type="checkbox" value="" class="sr-only peer" checked>
-                                        <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-primary"></div>
-                                    </label>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm">
-                                    <button class="text-primary hover:underline mr-3">Edit</button>
-                                    <button class="text-red-500 hover:underline">Delete</button>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </main>
-
-        <!-- Footer -->
-        <footer class="bg-white dark:bg-gray-900 py-4 border-t border-gray-200 dark:border-gray-700">
-            <div class="container mx-auto px-4 text-center text-sm text-gray-600 dark:text-gray-400">
-                <p>Employee Behavior Monitoring Dashboard v1.0 | Last updated: June 2023</p>
-            </div>
-        </footer>
+    <!-- Risk Summary Indicators -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      <RiskCard icon="exclamation-triangle" color="risk-high" label="High Risk" count="7 Employees" />
+      <RiskCard icon="triangle-exclamation" color="risk-medium" label="Medium Risk" count="15 Employees" />
+      <RiskCard icon="check-circle" color="risk-low" label="Low Risk" count="128 Employees" />
+      <RiskCard icon="bell" color="blue-500" label="Active Alerts" count="12 Alerts" />
     </div>
 
-    <!-- Add Rule Modal -->
-    <div id="addRuleModal" class="modal">
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-2xl">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-xl font-bold">Add New Rule</h2>
-                <button id="closeRuleModal" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <form class="space-y-4">
-                <div>
-                    <label for="ruleName" class="block text-sm font-medium mb-1">Rule Name</label>
-                    <input type="text" id="ruleName" class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-base" placeholder="e.g., After-hours System Access">
-                </div>
-                <div>
-                    <label for="ruleDescription" class="block text-sm font-medium mb-1">Description</label>
-                    <textarea id="ruleDescription" rows="2" class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-base" placeholder="Brief description of the rule"></textarea>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium mb-1">Trigger Conditions</label>
-                    <div class="space-y-2 p-3 border border-gray-300 dark:border-gray-600 rounded-lg">
-                        <div class="flex flex-wrap items-center gap-2">
-                            <select class="text-sm border border-gray-300 dark:border-gray-600 rounded p-2 bg-white dark:bg-gray-700">
-                                <option value="">Select field</option>
-                                <option value="system_access">System Access Time</option>
-                                <option value="file_access">File Access</option>
-                                <option value="vacation_days">Vacation Days</option>
-                            </select>
-                            <select class="text-sm border border-gray-300 dark:border-gray-600 rounded p-2 bg-white dark:bg-gray-700">
-                                <option value=">">&gt;</option>
-                                <option value="<">&lt;</option>
-                                <option value="=">=</option>
-                                <option value="!=">!=</option>
-                            </select>
-                            <input type="text" class="text-sm border border-gray-300 dark:border-gray-600 rounded p-2 bg-white dark:bg-gray-700" placeholder="Value">
-                            <button type="button" class="bg-gray-200 dark:bg-gray-700 p-2 rounded text-sm">
-                                <i class="fas fa-plus"></i> AND
-                            </button>
-                        </div>
-                    </div>
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label for="riskLevel" class="block text-sm font-medium mb-1">Risk Level</label>
-                        <select id="riskLevel" class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-base">
-                            <option value="high">High</option>
-                            <option value="medium">Medium</option>
-                            <option value="low">Low</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label for="notifyUsers" class="block text-sm font-medium mb-1">Notify Users</label>
-                        <select id="notifyUsers" class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-base" multiple>
-                            <option value="hr_team">HR Team</option>
-                            <option value="dept_managers">Department Managers</option>
-                            <option value="security_team">Security Team</option>
-                        </select>
-                    </div>
-                </div>
-                <div>
-                    <label class="flex items-center">
-                        <input type="checkbox" class="rounded text-primary focus:ring-primary border-gray-300 dark:border-gray-600">
-                        <span class="ml-2 text-sm">Enable rule immediately after creation</span>
-                    </label>
-                </div>
-                <div class="flex justify-end space-x-3 mt-6">
-                    <button type="button" id="cancelRuleBtn" class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm">Cancel</button>
-                    <button type="submit" class="px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg text-sm">Create Rule</button>
-                </div>
-            </form>
-        </div>
-    </div>
+    <!-- Department Filter Tabs -->
+    <!-- Additional dashboard content here -->
 
-    <!-- Employee Detail Modal -->
-    <div id="employeeDetailModal" class="modal">
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-4xl">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-xl font-bold">Employee Detail: <span id="employeeName">John Doe</span></h2>
-                <button id="closeEmployeeModal" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                <div class="bg-gray-100 dark:bg-gray-700 p-4 rounded-lg">
-                    <h3 class="font-medium mb-2">Employee Information</h3>
-                    <div class="space-y-1 text-sm">
-                        <p><span class="text-gray-600 dark:text-gray-400">ID:</span> EMP-1234</p>
-                        <p><span class="text-gray-600 dark:text-gray-400">Department:</span> Finance</p>
-                        <p><span class="text-gray-600 dark:text-gray-400">Position:</span> Financial Analyst</p>
-                        <p><span class="text-gray-600 dark:text-gray-400">Start Date:</span> 2019-03-15</p>
-                    </div>
-                </div>
-                <div class="bg-gray-100 dark:bg-gray-700 p-4 rounded-lg">
-                    <h3 class="font-medium mb-2">Risk Assessment</h3>
-                    <div class="flex items-center mb-2">
-                        <span class="text-gray-600 dark:text-gray-400 text-sm mr-2">Overall Risk:</span>
-                        <span class="px-2 py-1 bg-red-100 dark:bg-red-900/30 text-risk-high text-xs rounded-full font-semibold flex items-center">
-                            <span class="risk-indicator risk-high"></span>High
-                        </span>
-                    </div>
-                    <div class="space-y-1 text-sm">
-                        <p><span class="text-gray-600 dark:text-gray-400">Active Alerts:</span> 3</p>
-                        <p><span class="text-gray-600 dark:text-gray-400">Historical Incidents:</span> 5</p>
-                        <p><span class="text-gray-600 dark:text-gray-400">Last Review:</span> 2023-06-10</p>
-                    </div>
-                </div>
-                <div class="bg-gray-100 dark:bg-gray-700 p-4 rounded-lg">
-                    <h3 class="font-medium mb-2">System Access Statistics</h3>
-                    <div class="space-y-1 text-sm">
-                        <p><span class="text-gray-600 dark:text-gray-400">After-hours Access:</span> 7 instances</p>
-                        <p><span class="text-gray-600 dark:text-gray-400">Unauthorized Access Attempts:</span> 2</p>
-                        <p><span class="text-gray-600 dark:text-gray-400">Financial System Usage:</span> Very High</p>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="mb-6">
-                <h3 class="font-medium mb-3">Risk Indicators Timeline</h3>
-                <div class="relative">
-                    <div class="absolute top-0 bottom-0 left-4 w-0.5 bg-gray-300 dark:bg-gray-600"></div>
-                    <div class="space-y-4 ml-6">
-                        <div class="relative">
-                            <div class="absolute -left-6 top-1 w-4 h-4 rounded-full bg-risk-high"></div>
-                            <div class="bg-white dark:bg-gray-700 p-3 rounded shadow-sm border border-gray-200 dark:border-gray-600">
-                                <div class="flex justify-between">
-                                    <span class="font-medium">Unauthorized Transaction</span>
-                                    <span class="text-gray-500 dark:text-gray-400 text-sm">Today, 5:32 PM</span>
-                                </div>
-                                <p class="text-sm mt-1">Attempted to process payment outside of authorized limits ($25,000)</p>
-                            </div>
-                        </div>
-                        <div class="relative">
-                            <div class="absolute -left-6 top-1 w-4 h-4 rounded-full bg-risk-medium"></div>
-                            <div class="bg-white dark:bg-gray-700 p-3 rounded shadow-sm border border-gray-200 dark:border-gray-600">
-                                <div class="flex justify-between">
-                                    <span class="font-medium">After-hours System Access</span>
-                                    <span class="text-gray-500 dark:text-gray-400 text-sm">Yesterday, 11:47 PM</span>
-                                </div>
-                                <p class="text-sm mt-1">Accessed financial database outside of working hours for 37 minutes</p>
-                            </div>
-                        </div>
-                        <div class="relative">
-                            <div class="absolute -left-6 top-1 w-4 h-4 rounded-full bg-risk-high"></div>
-                            <div class="bg-white dark:bg-gray-700 p-3 rounded shadow-sm border border-gray-200 dark:border-gray-600">
-                                <div class="flex justify-between">
-                                    <span class="font-medium">Excessive Adjustments</span>
-                                    <span class="text-gray-500 dark:text-gray-400 text-sm">June 10, 2023</span>
-                                </div>
-                                <p class="text-sm mt-1">Made 12 adjustments to vendor payment records in a single day</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+  </main>
+</div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                    <h3 class="font-medium mb-3">Activity Heatmap</h3>
-                    <canvas id="activityHeatmap" height="180"></canvas>
-                </div>
-                <div>
-                    <h3 class="font-medium mb-3">System Access Pattern</h3>
-                    <canvas id="accessPattern" height="180"></canvas>
-                </div>
-            </div>
+<script>
+  // Helper function to create risk cards dynamically
+  function RiskCard({ icon, color, label, count }) {
+    const div = document.createElement('div');
+    div.className = 'bg-white dark:bg-gray-800 rounded-lg shadow p-4 flex items-center';
+    div.innerHTML = `
+      <div class="p-3 rounded-full bg-${color.replace('risk-', color)}-100 dark:bg-${color.replace('risk-', color)}-900/30 text-${color} mr-4">
+        <i class="fas fa-${icon} text-xl"></i>
+      </div>
+      <div>
+        <p class="text-sm text-gray-600 dark:text-gray-400">${label}</p>
+        <p class="text-xl font-bold">${count}</p>
+      </div>
+    `;
+    return div;
+  }
 
-            <div class="mt-6 flex justify-end space-x-3">
-                <button class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm">
-                    <i class="fas fa-file-export mr-1"></i> Export Data
-                </button>
-                <button class="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-lg text-sm">
-                    <i class="fas fa-flag mr-1"></i> Flag for Review
-                </button>
-                <button class="px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg text-sm">
-                    <i class="fas fa-tasks mr-1"></i> Assign Investigation
-                </button>
-            </div>
-        </div>
-    </div>
+  // Toggle alert panel
+  document.getElementById('alertsDropdown').addEventListener('click', () => {
+    const panel = document.getElementById('alertsPanel');
+    panel.classList.toggle('hidden');
+  });
 
-    <script>
-        // Check for dark mode preference
-        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-            document.documentElement.classList.add('dark');
-        }
-        
-        // Toggle dark mode
-        document.getElementById('theme-toggle').addEventListener('click', () => {
-            document.documentElement.classList.toggle('dark');
-        });
-        
-        // Listen for system dark mode changes
-        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
-            if (event.matches) {
-                document.documentElement.classList.add('dark');
-            } else {
-                document.documentElement.classList.remove('dark');
-            }
-        });
+  // Toggle user panel
+  document.getElementById('userDropdown').addEventListener('click', () => {
+    const panel = document.getElementById('userPanel');
+    panel.classList.toggle('hidden');
+  });
 
-        // Demo login function
-        document.getElementById('loginForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            const username = document.getElementById('username').value;
-            const role = document.getElementById('role').value;
-            
-            if (username.trim() !== '') {
-                // Set user info
-                document.getElementById('userName').textContent = username;
-                document.getElementById('userRole').innerHTML = `Role: <span class="font-medium">${role.charAt(0).toUpperCase() + role.slice(1)}</span>`;
-                
-                // Hide login modal
-                document.getElementById('authModal').classList.remove('active');
-                
-                // Show toast notification
-                showToast(`Logged in as ${username} (${role})`, 'success');
-                
-                // Show/hide role-specific elements
-                if (role === 'hr' || role === 'auditor') {
-                    document.getElementById('rulesConfig').style.display = 'block';
-                } else {
-                    document.getElementById('rulesConfig').style.display = 'none';
-                }
-            }
-        });
+  // Theme toggle
+  document.getElementById('theme-toggle').addEventListener('click', () => {
+    document.documentElement.classList.toggle('dark');
+  });
 
-        // Toggle user dropdown
-        document.getElementById('userDropdown').addEventListener('click', function() {
-            document.getElementById('userPanel').classList.toggle('hidden');
-            // Hide alerts dropdown if open
-            document.getElementById('alertsPanel').classList.add('hidden');
-        });
+  // Login form submission (demo)
+  document.getElementById('loginForm').addEventListener('submit', e => {
+    e.preventDefault();
+    document.getElementById('authModal').classList.remove('active');
+    const role = document.getElementById('role').value;
+    document.getElementById('userRole').querySelector('span').textContent = role.charAt(0).toUpperCase() + role.slice(1);
+    document.getElementById('userName').textContent = document.getElementById('username').value || 'User Name';
+  });
 
-        // Toggle alerts dropdown
-        document.getElementById('alertsDropdown').addEventListener('click', function() {
-            document.getElementById('alertsPanel').classList.toggle('hidden');
-            // Hide user dropdown if open
-            document.getElementById('userPanel').classList.add('hidden');
-        });
+  // Logout button
+  document.getElementById('logoutBtn').addEventListener('click', () => {
+    document.getElementById('authModal').classList.add('active');
+  });
+</script>
 
-        // Handle logout
-        document.getElementById('logoutBtn').addEventListener('click', function() {
-            document.getElementById('authModal').classList.add('active');
-            document.getElementById('userPanel').classList.add('hidden');
-            document.getElementById('username').value = '';
-            document.getElementById('password').value = '';
-        });
-
-        // Mark all alerts as read
-        document.getElementById('markAllRead').addEventListener('click', function() {
-            document.getElementById('alertCount').textContent = '0';
-            showToast('All alerts marked as read', 'success');
-        });
-
-        // Export button action
-        document.getElementById('exportBtn').addEventListener('click', function() {
-            showToast('Report exported successfully', 'success');
-        });
-
-        // Toggle card collapse
-        document.querySelectorAll('.card-toggle').forEach(button => {
-            button.addEventListener('click', function() {
-                const card = this.closest('div').nextElementSibling;
-                if (card.style.display === 'none') {
-                    card.style.display = 'block';
-                    this.querySelector('i').classList.remove('fa-chevron-up');
-                    this.querySelector('i').classList.add('fa-chevron-down');
-                } else {
-                    card.style.display = 'none';
-                    this.querySelector('i').classList.remove('fa-chevron-down');
-                    this.querySelector('i').classList.add('fa-chevron-up');
-                }
-            });
-        });
-
-        // Function to show toast notifications
-        function showToast(message, type = 'info') {
-            const toastContainer = document.getElementById('toastContainer');
-            const toast = document.createElement('div');
-            
-            let icon, bgColor, textColor;
-            if (type === 'success') {
-                icon = 'check-circle';
-                bgColor = 'bg-green-500';
-                textColor = 'text-white';
-            } else if (type === 'error') {
-                icon = 'exclamation-circle';
-                bgColor = 'bg-red-500';
-                textColor = 'text-white';
-            } else if (type === 'warning') {
-                icon = 'exclamation-triangle';
-                bgColor = 'bg-yellow-500';
-                textColor = 'text-white';
-            } else {
-                icon = 'info-circle';
-                bgColor = 'bg-blue-500';
-                textColor = 'text-white';
-            }
-            
-            toast.className = `${bgColor} ${textColor} p-3 rounded-lg shadow-lg flex items-center mb-3 transform transition-all duration-500 ease-in-out translate-x-full opacity-0`;
-            toast.innerHTML = `
-                <i class="fas fa-${icon} mr-2"></i>
-                <span>${message}</span>
-                <button class="ml-auto text-white hover:text-gray-200">
-                    <i class="fas fa-times"></i>
-                </button>
-            `;
-            
-            toastContainer.appendChild(toast);
-            
-            // Trigger animation
-            setTimeout(() => {
-                toast.classList.remove('translate-x-full', 'opacity-0');
-            }, 10);
-            
-            // Auto remove after 5 seconds
-            setTimeout(() => {
-                toast.classList.add('translate-x-full', 'opacity-0');
-                setTimeout(() => {
-                    toast.remove();
-                }, 500);
-            }, 5000);
-            
-            // Handle close button
-            toast.querySelector('button').addEventListener('click', () => {
-                toast.classList.add('translate-x-full', 'opacity-0');
-                setTimeout(() => {
-                    toast.remove();
-                }, 500);
-            });
-        }
-
-        // Initialize charts
-        function initCharts() {
-            // Attendance Chart
-            const attendanceCtx = document.getElementById('attendanceChart').getContext('2d');
-            const attendanceChart = new Chart(attendanceCtx, {
-                type: 'line',
-                data: {
-                    labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
-                    datasets: [
-                        {
-                            label: 'Late Arrivals',
-                            data: [5, 7, 4, 6],
-                            borderColor: '#F59E0B',
-                            backgroundColor: 'rgba(245, 158, 11, 0.1)',
-                            tension: 0.4
-                        },
-                        {
-                            label: 'Absences',
-                            data: [2, 1, 3, 2],
-                            borderColor: '#EF4444',
-                            backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                            tension: 0.4
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'top',
-                            labels: {
-                                color: document.documentElement.classList.contains('dark') ? '#E5E7EB' : '#4B5563'
-                            }
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                color: document.documentElement.classList.contains('dark') ? '#9CA3AF' : '#6B7280'
-                            },
-                            grid: {
-                                color: document.documentElement.classList.contains('dark') ? 'rgba(156, 163, 175, 0.1)' : 'rgba(107, 114, 128, 0.1)'
-                            }
-                        },
-                        x: {
-                            ticks: {
-                                color: document.documentElement.classList.contains('dark') ? '#9CA3AF' : '#6B7280'
-                            },
-                            grid: {
-                                display: false
-                            }
-                        }
-                    }
-                }
-            });
-
-            // Employee Detail Charts (initialize only if modal is visible)
-            if (!document.getElementById('employeeDetailModal').classList.contains('hidden')) {
-                // Activity Heatmap
-                const heatmapCtx = document.getElementById('activityHeatmap').getContext('2d');
-                const heatmapChart = new Chart(heatmapCtx, {
-                    type: 'bar',
-                    data: {
-                        labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
-                        datasets: [
-                            {
-                                label: 'Regular Hours',
-                                data: [7, 8, 6, 7, 5],
-                                backgroundColor: '#10B981'
-                            },
-                            {
-                                label: 'After Hours',
-                                data: [1, 0, 2, 1, 3],
-                                backgroundColor: '#EF4444'
-                            }
-                        ]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: {
-                                position: 'top'
-                            }
-                        },
-                        scales: {
-                            y: {
-                                beginAtZero: true,
-                                stacked: true
-                            },
-                            x: {
-                                stacked: true
-                            }
-                        }
-                    }
-                });
-
-                // Access Pattern
-                const patternCtx = document.getElementById('accessPattern').getContext('2d');
-                const patternChart = new Chart(patternCtx, {
-                    type: 'line',
-                    data: {
-                        labels: ['6am', '9am', '12pm', '3pm', '6pm', '9pm', '12am', '3am'],
-                        datasets: [{
-                            label: 'System Access Frequency',
-                            data: [0, 12, 19, 15, 8, 5, 3, 1],
-                            borderColor: '#5D5CDE',
-                            backgroundColor: 'rgba(93, 92, 222, 0.1)',
-                            tension: 0.4,
-                            fill: true
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false
-                    }
-                });
-            }
-        }
-
-        // Initialize WebSocket connection (simulated for demo)
-        function initWebSocket() {
-            // This is a simulation of websocket behavior
-            console.log("Initializing WebSocket connection...");
-            
-            // Simulate receiving real-time alerts
-            const alerts = [
-                {
-                    employee: "Alex Thompson",
-                    department: "IT",
-                    alertType: "Restricted File Access",
-                    timestamp: "Just now",
-                    risk: "high"
-                },
-                {
-                    employee: "Emily Davis",
-                    department: "Finance",
-                    alertType: "After-hours System Access",
-                    timestamp: "5 minutes ago",
-                    risk: "medium"
-                }
-            ];
-            
-            // Show first alert after 10 seconds
-            setTimeout(() => {
-                showRealTimeAlert(alerts[0]);
-            }, 10000);
-            
-            // Show second alert after 25 seconds
-            setTimeout(() => {
-                showRealTimeAlert(alerts[1]);
-            }, 25000);
-        }
-        
-        // Function to display real-time alerts
-        function showRealTimeAlert(alert) {
-            // Update alert count
-            const alertCount = document.getElementById('alertCount');
-            alertCount.textContent = parseInt(alertCount.textContent) + 1;
-            
-            // Show toast notification
-            showToast(`New Alert: ${alert.employee} - ${alert.alertType}`, alert.risk === 'high' ? 'error' : 'warning');
-            
-            // Add to alerts panel (in a real app, this would prepend to the list)
-            // Code omitted for simplicity in this demo
-        }
-
-        // Initialize modal event listeners
-        function initModals() {
-            // Rule configuration modal
-            const addRuleBtn = document.querySelector('button.bg-primary');
-            const addRuleModal = document.getElementById('addRuleModal');
-            const closeRuleModal = document.getElementById('closeRuleModal');
-            const cancelRuleBtn = document.getElementById('cancelRuleBtn');
-            
-            if (addRuleBtn) {
-                addRuleBtn.addEventListener('click', () => {
-                    addRuleModal.classList.add('active');
-                });
-            }
-            
-            if (closeRuleModal) {
-                closeRuleModal.addEventListener('click', () => {
-                    addRuleModal.classList.remove('active');
-                });
-            }
-            
-            if (cancelRuleBtn) {
-                cancelRuleBtn.addEventListener('click', () => {
-                    addRuleModal.classList.remove('active');
-                });
-            }
-            
-            // Employee detail modal
-            const detailButtons = document.querySelectorAll('button.text-primary');
-            const employeeDetailModal = document.getElementById('employeeDetailModal');
-            const closeEmployeeModal = document.getElementById('closeEmployeeModal');
-            
-            detailButtons.forEach(button => {
-                button.addEventListener('click', function() {
-                    // In a real app, we would fetch employee details here
-                    // For this demo, we'll just show the modal with preset data
-                    employeeDetailModal.classList.add('active');
-                    
-                    // Initialize charts in the employee detail modal
-                    setTimeout(() => {
-                        if (document.getElementById('activityHeatmap') && 
-                            document.getElementById('accessPattern')) {
-                            initEmployeeCharts();
-                        }
-                    }, 100);
-                });
-            });
-            
-            if (closeEmployeeModal) {
-                closeEmployeeModal.addEventListener('click', () => {
-                    employeeDetailModal.classList.remove('active');
-                });
-            }
-            
-            // Close modals when clicking outside
-            window.addEventListener('click', (e) => {
-                if (e.target === addRuleModal) {
-                    addRuleModal.classList.remove('active');
-                }
-                if (e.target === employeeDetailModal) {
-                    employeeDetailModal.classList.remove('active');
-                }
-            });
-        }
-        
-        // Initialize employee detail charts
-        function initEmployeeCharts() {
-            // Activity Heatmap
-            const heatmapCtx = document.getElementById('activityHeatmap').getContext('2d');
-            new Chart(heatmapCtx, {
-                type: 'bar',
-                data: {
-                    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
-                    datasets: [
-                        {
-                            label: 'Regular Hours',
-                            data: [7, 8, 6, 7, 5],
-                            backgroundColor: '#10B981'
-                        },
-                        {
-                            label: 'After Hours',
-                            data: [1, 0, 2, 1, 3],
-                            backgroundColor: '#EF4444'
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'top',
-                            labels: {
-                                color: document.documentElement.classList.contains('dark') ? '#E5E7EB' : '#4B5563'
-                            }
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            stacked: true,
-                            ticks: {
-                                color: document.documentElement.classList.contains('dark') ? '#9CA3AF' : '#6B7280'
-                            },
-                            grid: {
-                                color: document.documentElement.classList.contains('dark') ? 'rgba(156, 163, 175, 0.1)' : 'rgba(107, 114, 128, 0.1)'
-                            }
-                        },
-                        x: {
-                            stacked: true,
-                            ticks: {
-                                color: document.documentElement.classList.contains('dark') ? '#9CA3AF' : '#6B7280'
-                            },
-                            grid: {
-                                display: false
-                            }
-                        }
-                    }
-                }
-            });
-
-            // Access Pattern
-            const patternCtx = document.getElementById('accessPattern').getContext('2d');
-            new Chart(patternCtx, {
-                type: 'line',
-                data: {
-                    labels: ['6am', '9am', '12pm', '3pm', '6pm', '9pm', '12am', '3am'],
-                    datasets: [{
-                        label: 'System Access Frequency',
-                        data: [0, 12, 19, 15, 8, 5, 3, 1],
-                        borderColor: '#5D5CDE',
-                        backgroundColor: 'rgba(93, 92, 222, 0.1)',
-                        tension: 0.4,
-                        fill: true
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'top',
-                            labels: {
-                                color: document.documentElement.classList.contains('dark') ? '#E5E7EB' : '#4B5563'
-                            }
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                color: document.documentElement.classList.contains('dark') ? '#9CA3AF' : '#6B7280'
-                            },
-                            grid: {
-                                color: document.documentElement.classList.contains('dark') ? 'rgba(156, 163, 175, 0.1)' : 'rgba(107, 114, 128, 0.1)'
-                            }
-                        },
-                        x: {
-                            ticks: {
-                                color: document.documentElement.classList.contains('dark') ? '#9CA3AF' : '#6B7280'
-                            },
-                            grid: {
-                                display: false
-                            }
-                        }
-                    }
-                }
-            });
-        }
-
-        // Initialize everything when the DOM is loaded
-        document.addEventListener('DOMContentLoaded', function() {
-            initCharts();
-            initWebSocket();
-            initModals();
-            
-            // Hide rules config by default (will show based on role after login)
-            document.getElementById('rulesConfig').style.display = 'none';
-        });
-    </script>
 </body>
 </html>
