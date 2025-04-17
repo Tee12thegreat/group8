@@ -1,279 +1,395 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Employee Behavior Monitoring Dashboard</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.6.1/dist/socket.io.min.js"></script>
-<script>
-  tailwind.config = {
-    darkMode: 'class',
-    theme: {
-      extend: {
-        colors: {
-          primary: '#5D5CDE',
-          'dark-bg': '#181818',
-          'risk-low': '#10B981',
-          'risk-medium': '#F59E0B',
-          'risk-high': '#EF4444',
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employee Behavior Monitoring Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.6.1/dist/socket.io.min.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#5D5CDE',
+                        'dark-bg': '#181818',
+                        'risk-low': '#10B981',
+                        'risk-medium': '#F59E0B',
+                        'risk-high': '#EF4444',
+                    }
+                }
+            }
         }
-      }
-    }
-  };
-</script>
-<style>
-  .risk-indicator {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    display: inline-block;
-    margin-right: 6px;
-  }
-  .risk-low { background-color: #10B981; }
-  .risk-medium { background-color: #F59E0B; }
-  .risk-high { background-color: #EF4444; }
-  .alert-animation { animation: pulse 2s infinite; }
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
-  }
-  .card-collapse-enter {
-    max-height: 0;
-    opacity: 0;
-    overflow: hidden;
-    transition: max-height 0.5s ease, opacity 0.3s ease;
-  }
-  .card-collapse-enter-active {
-    max-height: 1000px;
-    opacity: 1;
-  }
-  .dark .table-striped tr:nth-child(even) {
-    background-color: rgba(55, 65, 81, 0.3);
-  }
-  .table-striped tr:nth-child(even) {
-    background-color: rgba(243, 244, 246, 0.5);
-  }
-  .dashboard-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 1rem;
-  }
-  @media (max-width: 640px) {
-    .dashboard-grid {
-      grid-template-columns: 1fr;
-    }
-  }
-  .modal {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.5);
-    z-index: 100;
-    justify-content: center;
-    align-items: center;
-  }
-  .modal.active {
-    display: flex;
-  }
-</style>
+    </script>
+    <style>
+        .risk-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 6px;
+        }
+        .risk-low { background-color: #10B981; }
+        .risk-medium { background-color: #F59E0B; }
+        .risk-high { background-color: #EF4444; }
+        
+        .alert-animation {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        .card-collapse-enter {
+            max-height: 0;
+            opacity: 0;
+            overflow: hidden;
+            transition: max-height 0.5s ease-in-out, opacity 0.3s ease-in-out;
+        }
+        
+        .card-collapse-enter-active {
+            max-height: 1000px;
+            opacity: 1;
+        }
+        
+        .dark .table-striped tr:nth-child(even) {
+            background-color: rgba(55, 65, 81, 0.3);
+        }
+        
+        .table-striped tr:nth-child(even) {
+            background-color: rgba(243, 244, 246, 0.5);
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1rem;
+        }
+        
+        @media (max-width: 640px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal.active {
+            display: flex;
+        }
+    </style>
 </head>
 <body class="bg-gray-100 dark:bg-dark-bg text-gray-800 dark:text-gray-200 transition-colors duration-300">
 
-<!-- Authentication Modal -->
-<div id="authModal" class="modal active">
-  <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 max-w-md w-full">
-    <h2 class="text-2xl font-bold mb-4 text-center">Login</h2>
-    <form id="loginForm" class="space-y-4">
-      <div>
-        <label for="username" class="block text-sm font-medium mb-1">Username</label>
-        <input type="text" id="username" required class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-base" />
-      </div>
-      <div>
-        <label for="password" class="block text-sm font-medium mb-1">Password</label>
-        <input type="password" id="password" required class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-base" />
-      </div>
-      <div>
-        <label for="role" class="block text-sm font-medium mb-1">Role</label>
-        <select id="role" class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-base">
-          <option value="hr">HR</option>
-          <option value="manager">Manager</option>
-          <option value="auditor">Auditor</option>
-        </select>
-      </div>
-      <button type="submit" class="w-full bg-primary hover:bg-primary/90 text-white py-2 rounded-lg transition">Login</button>
-      <p class="text-xs text-center text-gray-500 dark:text-gray-400 mt-2">Demo: Enter any username/password. Select your role to see different access levels.</p>
-    </form>
-  </div>
-</div>
-
-<div class="min-h-screen flex flex-col">
-  <!-- Header -->
-  <header class="bg-white dark:bg-gray-900 shadow-md">
-    <div class="container mx-auto px-4 py-4 flex flex-col md:flex-row justify-between items-center">
-      <div class="flex items-center mb-2 md:mb-0">
-        <i class="fas fa-shield-alt text-primary text-2xl mr-3"></i>
-        <h1 class="text-xl md:text-2xl font-bold">Employee Behavior Monitoring</h1>
-      </div>
-      <div class="flex items-center space-x-2 relative">
-        <button id="alertsDropdown" class="p-2 rounded-full text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition relative">
-          <i class="fas fa-bell text-lg"></i>
-          <span id="alertCount" class="absolute top-0 right-0 bg-risk-high text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">3</span>
-        </button>
-        <div id="alertsPanel" class="hidden absolute right-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-lg shadow-lg z-30 overflow-hidden">
-          <div class="p-3 bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 flex justify-between items-center">
-            <h3 class="font-semibold">Recent Alerts</h3>
-            <button id="markAllRead" class="text-xs text-primary hover:underline">Mark all as read</button>
-          </div>
-          <div class="max-h-96 overflow-y-auto">
-            <div class="p-3 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750 transition">
-              <div class="flex items-center">
-                <span class="risk-indicator risk-high"></span>
-                <span class="font-medium">John Doe - Financial Discrepancy</span>
-              </div>
-              <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Unauthorized transaction attempt at 5:32 PM</p>
-              <div class="flex justify-between items-center mt-2 text-xs">
-                <span class="text-gray-500">10 min ago</span>
-                <button class="text-primary hover:underline">View</button>
-              </div>
-            </div>
-            <div class="p-3 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750 transition">
-              <div class="flex items-center">
-                <span class="risk-indicator risk-medium"></span>
-                <span class="font-medium">Sarah Johnson - Vacation Avoidance</span>
-              </div>
-              <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">No vacation taken in 12 months</p>
-              <div class="flex justify-between items-center mt-2 text-xs">
-                <span class="text-gray-500">1 hour ago</span>
-                <button class="text-primary hover:underline">View</button>
-              </div>
-            </div>
-            <div class="p-3 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750 transition">
-              <div class="flex items-center">
-                <span class="risk-indicator risk-high"></span>
-                <span class="font-medium">Mike Williams - Unusual Secrecy</span>
-              </div>
-              <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">After-hours access to payroll database</p>
-              <div class="flex justify-between items-center mt-2 text-xs">
-                <span class="text-gray-500">2 hours ago</span>
-                <button class="text-primary hover:underline">View</button>
-              </div>
-            </div>
-          </div>
-          <div class="p-2 bg-gray-100 dark:bg-gray-700 text-center">
-            <a href="#" class="text-sm text-primary hover:underline">View All Alerts</a>
-          </div>
+    <div id="authModal" class="modal active">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-md">
+            <h2 class="text-2xl font-bold mb-4 text-center">Login</h2>
+            <form id="loginForm" class="space-y-4">
+                <div>
+                    <label for="username" class="block text-sm font-medium mb-1">Username</label>
+                    <input type="text" id="username" class="w-full input-style" required>
+                </div>
+                <div>
+                    <label for="password" class="block text-sm font-medium mb-1">Password</label>
+                    <input type="password" id="password" class="w-full input-style" required>
+                </div>
+                <div>
+                    <label for="role" class="block text-sm font-medium mb-1">Role</label>
+                    <select id="role" class="w-full select-style">
+                        <option value="hr">HR</option>
+                        <option value="manager">Manager</option>
+                        <option value="auditor">Auditor</option>
+                    </select>
+                </div>
+                <button type="submit" class="w-full bg-primary hover:bg-primary/90 text-white py-2 px-4 rounded-lg transition">Login</button>
+                <p class="text-xs text-center text-gray-500 dark:text-gray-400 mt-2">
+                    Demo: Enter any username/password. Select your role.
+                </p>
+            </form>
         </div>
-        <button id="theme-toggle" class="p-2 rounded-full text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition ml-2">
-          <i class="fas fa-moon dark:hidden"></i>
-          <i class="fas fa-sun hidden dark:inline"></i>
-        </button>
-        <div class="relative ml-2">
-          <button id="userDropdown" class="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition">
-            <img id="userAvatar" class="w-8 h-8 rounded-full" src="https://picsum.photos/200" alt="User avatar" />
-            <span id="userName" class="hidden md:inline font-medium">User Name</span>
-            <i class="fas fa-chevron-down text-xs"></i>
-          </button>
-          <div id="userPanel" class="hidden absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg z-30">
-            <div class="p-3 border-b border-gray-200 dark:border-gray-600">
-              <p id="userRole" class="text-sm text-gray-600 dark:text-gray-400">Role: <span class="font-medium">Manager</span></p>
-            </div>
-            <div class="p-2">
-              <button id="logoutBtn" class="w-full text-left px-3 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition text-sm">
-                <i class="fas fa-sign-out-alt mr-2"></i> Logout
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </header>
-
-  <!-- Toast Notifications -->
-  <div id="toastContainer" class="fixed top-5 right-5 z-50 w-72 space-y-3"></div>
-
-  <!-- Main Content -->
-  <main class="flex-grow container mx-auto px-4 py-6">
-    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-      <div>
-        <h2 class="text-2xl font-bold">Employee Monitoring Dashboard</h2>
-        <p class="text-gray-600 dark:text-gray-400">Real-time behavioral risk indicators</p>
-      </div>
-      <div class="flex flex-col sm:flex-row gap-3">
-        <div class="relative">
-          <input type="text" placeholder="Search employees..." class="pl-10 pr-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-base w-full" />
-          <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
-        </div>
-        <button id="exportBtn" class="flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-white py-2 px-4 rounded-lg transition">
-          <i class="fas fa-download"></i> Export Report
-        </button>
-      </div>
     </div>
 
-    <!-- Risk Summary Indicators -->
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-      <RiskCard icon="exclamation-triangle" color="risk-high" label="High Risk" count="7 Employees" />
-      <RiskCard icon="triangle-exclamation" color="risk-medium" label="Medium Risk" count="15 Employees" />
-      <RiskCard icon="check-circle" color="risk-low" label="Low Risk" count="128 Employees" />
-      <RiskCard icon="bell" color="blue-500" label="Active Alerts" count="12 Alerts" />
+    <div class="min-h-screen flex flex-col">
+        <header class="bg-white dark:bg-gray-900 shadow-md">
+            <div class="container mx-auto p-4 flex md:flex-row justify-between items-center">
+                <div class="flex items-center mb-2 md:mb-0">
+                    <i class="fas fa-shield-alt text-primary text-2xl mr-3"></i>
+                    <h1 class="text-xl md:text-2xl font-bold">Employee Behavior Monitoring</h1>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <div class="relative">
+                        <button id="alertsDropdown" class="dropdown-btn">
+                            <i class="fas fa-bell text-lg"></i>
+                            <span id="alertCount" class="absolute top-0 right-0 bg-risk-high text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">3</span>
+                        </button>
+                        <div id="alertsPanel" class="hidden dropdown-panel">
+                            <div class="panel-header">
+                                <h3 class="font-semibold">Recent Alerts</h3>
+                                <button id="markAllRead" class="text-xs text-primary hover:underline">Mark all as read</button>
+                            </div>
+                            <div class="max-h-96 overflow-y-auto">
+                                <div class="panel-item">
+                                    <div class="flex items-center">
+                                        <span class="risk-indicator risk-high"></span>
+                                        <span class="font-medium">John Doe - Financial Discrepancy</span>
+                                    </div>
+                                    <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Unauthorized transaction attempt at 5:32 PM</p>
+                                    <div class="flex justify-between items-center mt-2 text-xs">
+                                        <span class="text-gray-500">10 min ago</span>
+                                        <button class="text-primary hover:underline">View</button>
+                                    </div>
+                                </div>
+                                <div class="panel-item">
+                                    <div class="flex items-center">
+                                        <span class="risk-indicator risk-medium"></span>
+                                        <span class="font-medium">Sarah Johnson - Vacation Avoidance</span>
+                                    </div>
+                                    <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">No vacation taken in 12 months</p>
+                                    <div class="flex justify-between items-center mt-2 text-xs">
+                                        <span class="text-gray-500">1 hour ago</span>
+                                        <button class="text-primary hover:underline">View</button>
+                                    </div>
+                                </div>
+                                <div class="panel-item">
+                                    <div class="flex items-center">
+                                        <span class="risk-indicator risk-high"></span>
+                                        <span class="font-medium">Mike Williams - Unusual Secrecy</span>
+                                    </div>
+                                    <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">After-hours access to payroll database</p>
+                                    <div class="flex justify-between items-center mt-2 text-xs">
+                                        <span class="text-gray-500">2 hours ago</span>
+                                        <button class="text-primary hover:underline">View</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="panel-footer">
+                                <a href="#" class="text-sm text-primary hover:underline">View All Alerts</a>
+                            </div>
+                        </div>
+                    </div>
+                    <button id="theme-toggle" class="dropdown-btn">
+                        <i class="fas fa-moon dark:hidden"></i>
+                        <i class="fas fa-sun hidden dark:inline"></i>
+                    </button>
+                    <div class="relative">
+                        <button id="userDropdown" class="dropdown-btn">
+                            <img id="userAvatar" class="w-8 h-8 rounded-full" src="https://picsum.photos/200" alt="User avatar">
+                            <span id="userName" class="hidden md:inline font-medium">User Name</span>
+                            <i class="fas fa-chevron-down text-xs"></i>
+                        </button>
+                        <div id="userPanel" class="hidden dropdown-panel">
+                            <div class="panel-header">
+                                <p id="userRole" class="text-sm text-gray-600 dark:text-gray-400">Role: <span class="font-medium">Manager</span></p>
+                            </div>
+                            <div class="p-2">
+                                <button id="logoutBtn" class="w-full text-left px-3 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition text-sm">
+                                    <i class="fas fa-sign-out-alt mr-2"></i> Logout
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <div id="toastContainer" class="fixed top-5 right-5 z-50 w-72 space-y-3"></div>
+
+        <main class="flex-grow container mx-auto p-4">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+                <div>
+                    <h2 class="text-2xl font-bold">Employee Monitoring Dashboard</h2>
+                    <p class="text-gray-600 dark:text-gray-400">Real-time behavioral risk indicators</p>
+                </div>
+                <div class="flex flex-col sm:flex-row gap-3">
+                    <div class="relative">
+                        <input type="text" placeholder="Search employees..." class="pl-10 pr-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-base w-full">
+                        <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+                    </div>
+                    <button id="exportBtn" class="export-btn">
+                        <i class="fas fa-download"></i>
+                        <span>Export Report</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                <div class="risk-card risk-high">
+                    <i class="fas fa-exclamation-triangle text-xl"></i>
+                    <div>
+                        <p class="text-sm text-gray-600 dark:text-gray-400">High Risk</p>
+                        <p class="text-xl font-bold">7 Employees</p>
+                    </div>
+                </div>
+                <div class="risk-card risk-medium">
+                    <i class="fas fa-triangle-exclamation text-xl"></i>
+                    <div>
+                        <p class="text-sm text-gray-600 dark:text-gray-400">Medium Risk</p>
+                        <p class="text-xl font-bold">15 Employees</p>
+                    </div>
+                </div>
+                <div class="risk-card risk-low">
+                    <i class="fas fa-check-circle text-xl"></i>
+                    <div>
+                        <p class="text-sm text-gray-600 dark:text-gray-400">Low Risk</p>
+                        <p class="text-xl font-bold">128 Employees</p>
+                    </div>
+                </div>
+                <div class="risk-card blue-500">
+                    <i class="fas fa-bell text-xl"></i>
+                    <div>
+                        <p class="text-sm text-gray-600 dark:text-gray-400">Active Alerts</p>
+                        <p class="text-xl font-bold">12 Alerts</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="border-b border-gray-200 dark:border-gray-700">
+                <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+                    <button class="tab-btn active" data-tab="all">All Departments</button>
+                    <button class="tab-btn" data-tab="hr">HR</button>
+                    <button class="tab-btn" data-tab="finance">Finance</button>
+                    <button class="tab-btn" data-tab="it">IT</button>
+                    <button class="tab-btn" data-tab="marketing">Marketing</button>
+                </nav>
+            </div>
+
+            <div class="mt-6">
+                <div class="overflow-x-auto">
+                    <table class="min-w-full leading-normal table-striped">
+                        <thead>
+                            <tr>
+                                <th class="table-header">Employee</th>
+                                <th class="table-header">Department</th>
+                                <th class="table-header">Risk Level</th>
+                                <th class="table-header">Last Activity</th>
+                                <th class="table-header">Details</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="table-cell">John Doe</td>
+                                <td class="table-cell">Finance</td>
+                                <td class="table-cell"><span class="risk-indicator risk-high"></span> High</td>
+                                <td class="table-cell">2 hours ago</td>
+                                <td class="table-cell"><button class="text-primary hover:underline">View</button></td>
+                            </tr>
+                            <tr>
+                                <td class="table-cell">Jane Smith</td>
+                                <td class="table-cell">HR</td>
+                                <td class="table-cell"><span class="risk-indicator risk-medium"></span> Medium</td>
+                                <td class="table-cell">5 hours ago</td>
+                                <td class="table-cell"><button class="text-primary hover:underline">View</button></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
     </div>
 
-    <!-- Department Filter Tabs -->
-    <!-- Additional dashboard content here -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- Utility Functions ---
+            const togglePanel = (panelId) => {
+                const panel = document.getElementById(panelId);
+                panel.classList.toggle('hidden');
+            };
 
-  </main>
-</div>
+            // --- Dropdown Handlers ---
+            document.querySelectorAll('.dropdown-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const panelId = this.id.replace('Dropdown', 'Panel');
+                    togglePanel(panelId);
+                });
+            });
 
-<script>
-  // Helper function to create risk cards dynamically
-  function RiskCard({ icon, color, label, count }) {
-    const div = document.createElement('div');
-    div.className = 'bg-white dark:bg-gray-800 rounded-lg shadow p-4 flex items-center';
-    div.innerHTML = `
-      <div class="p-3 rounded-full bg-${color.replace('risk-', color)}-100 dark:bg-${color.replace('risk-', color)}-900/30 text-${color} mr-4">
-        <i class="fas fa-${icon} text-xl"></i>
-      </div>
-      <div>
-        <p class="text-sm text-gray-600 dark:text-gray-400">${label}</p>
-        <p class="text-xl font-bold">${count}</p>
-      </div>
-    `;
-    return div;
-  }
+            // --- Theme Toggle ---
+            document.getElementById('theme-toggle').addEventListener('click', () => {
+                document.documentElement.classList.toggle('dark');
+            });
 
-  // Toggle alert panel
-  document.getElementById('alertsDropdown').addEventListener('click', () => {
-    const panel = document.getElementById('alertsPanel');
-    panel.classList.toggle('hidden');
-  });
+            // --- Login Form ---
+            document.getElementById('loginForm').addEventListener('submit', (e) => {
+                e.preventDefault();
+                document.getElementById('authModal').classList.remove('active');
+            });
 
-  // Toggle user panel
-  document.getElementById('userDropdown').addEventListener('click', () => {
-    const panel = document.getElementById('userPanel');
-    panel.classList.toggle('hidden');
-  });
+            // --- Tab Switching ---
+            document.querySelectorAll('.tab-btn').forEach(tab => {
+                tab.addEventListener('click', function() {
+                    document.querySelectorAll('.tab-btn').forEach(t => t.classList.remove('active'));
+                    this.classList.add('active');
+                });
+            });
+        });
+    </script>
+    
+    <style>
+        .input-style {
+            @apply w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-base;
+        }
 
-  // Theme toggle
-  document.getElementById('theme-toggle').addEventListener('click', () => {
-    document.documentElement.classList.toggle('dark');
-  });
+        .select-style {
+            @apply w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-base;
+        }
 
-  // Login form submission (demo)
-  document.getElementById('loginForm').addEventListener('submit', e => {
-    e.preventDefault();
-    document.getElementById('authModal').classList.remove('active');
-    const role = document.getElementById('role').value;
-    document.getElementById('userRole').querySelector('span').textContent = role.charAt(0).toUpperCase() + role.slice(1);
-    document.getElementById('userName').textContent = document.getElementById('username').value || 'User Name';
-  });
+        .dropdown-btn {
+            @apply p-2 rounded-full text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors relative;
+        }
 
-  // Logout button
-  document.getElementById('logoutBtn').addEventListener('click', () => {
-    document.getElementById('authModal').classList.add('active');
-  });
-</script>
+        .dropdown-panel {
+            @apply hidden absolute right-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-lg shadow-lg z-30 overflow-hidden;
+        }
 
+        .panel-header {
+            @apply p-3 bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 flex justify-between items-center;
+        }
+
+        .panel-item {
+            @apply p-3 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750 transition;
+        }
+
+        .panel-footer {
+            @apply p-2 bg-gray-100 dark:bg-gray-700 text-center;
+        }
+
+        .export-btn {
+            @apply flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-white py-2 px-4 rounded-lg transition;
+        }
+
+        .risk-card {
+            @apply bg-white dark:bg-gray-800 rounded-lg shadow p-4 flex items-center;
+        }
+
+        .tab-btn {
+            @apply py-4 px-1 text-gray-500 border-b-2 border-transparent hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300 transition-colors duration-300;
+        }
+
+        .tab-btn.active {
+            @apply text-primary border-primary;
+        }
+
+        .table-header {
+            @apply px-6 py-3 bg-gray-50 dark:bg-gray-800 text-left text-xs leading-4 font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider;
+        }
+
+        .table-cell {
+            @apply px-6 py-4 whitespace-no-wrap border-b border-gray-200 dark:border-gray-700 text-sm leading-5 text-gray-800 dark:text-gray-200;
+        }
+    </style>
 </body>
 </html>
