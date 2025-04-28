@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Employee Behavior Monitoring Dashboard</title>
+  <title>Fraudulent Employee Behavior Detection System</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -21,6 +21,11 @@
             'risk-low': '#10B981',
             'risk-medium': '#F59E0B',
             'risk-high': '#EF4444',
+            'financial': '#3B82F6',
+            'lifestyle': '#8B5CF6',
+            'secrecy': '#EC4899',
+            'vacation': '#14B8A6',
+            'reporting': '#F97316'
           }
         }
       }
@@ -144,6 +149,187 @@
     .employee-details.active {
       display: block;
     }
+
+    .behavior-tag {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 500;
+      margin-right: 4px;
+      margin-bottom: 4px;
+    }
+
+    .behavior-financial {
+      background-color: #EFF6FF;
+      color: #1D4ED8;
+    }
+
+    .behavior-lifestyle {
+      background-color: #F5F3FF;
+      color: #7C3AED;
+    }
+
+    .behavior-secrecy {
+      background-color: #FDF2F8;
+      color: #DB2777;
+    }
+
+    .behavior-vacation {
+      background-color: #ECFDF5;
+      color: #0D9488;
+    }
+
+    .behavior-reporting {
+      background-color: #FFF7ED;
+      color: #EA580C;
+    }
+
+    .dark .behavior-financial {
+      background-color: #1E3A8A;
+      color: #BFDBFE;
+    }
+
+    .dark .behavior-lifestyle {
+      background-color: #4C1D95;
+      color: #DDD6FE;
+    }
+
+    .dark .behavior-secrecy {
+      background-color: #831843;
+      color: #FBCFE8;
+    }
+
+    .dark .behavior-vacation {
+      background-color: #134E4A;
+      color: #99F6E4;
+    }
+
+    .dark .behavior-reporting {
+      background-color: #7C2D12;
+      color: #FED7AA;
+    }
+
+    .risk-timeline {
+      position: relative;
+      padding-left: 20px;
+    }
+
+    .risk-timeline::before {
+      content: '';
+      position: absolute;
+      left: 6px;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background-color: #E5E7EB;
+    }
+
+    .dark .risk-timeline::before {
+      background-color: #374151;
+    }
+
+    .timeline-item {
+      position: relative;
+      padding-bottom: 16px;
+    }
+
+    .timeline-item::before {
+      content: '';
+      position: absolute;
+      left: -20px;
+      top: 4px;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background-color: #E5E7EB;
+    }
+
+    .dark .timeline-item::before {
+      background-color: #374151;
+    }
+
+    .timeline-item.high::before {
+      background-color: #EF4444;
+    }
+
+    .timeline-item.medium::before {
+      background-color: #F59E0B;
+    }
+
+    .timeline-item.low::before {
+      background-color: #10B981;
+    }
+
+    .psycho-card {
+      transition: all 0.3s ease;
+    }
+
+    .psycho-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    }
+
+    .dark .psycho-card:hover {
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
+    }
+
+    .nav-link {
+      position: relative;
+    }
+
+    .nav-link::after {
+      content: '';
+      position: absolute;
+      bottom: -2px;
+      left: 0;
+      width: 0;
+      height: 2px;
+      background-color: #5D5CDE;
+      transition: width 0.3s ease;
+    }
+
+    .nav-link.active::after {
+      width: 100%;
+    }
+
+    .nav-link:hover::after {
+      width: 100%;
+    }
+
+    .sidebar {
+      transition: all 0.3s ease;
+    }
+
+    @media (max-width: 768px) {
+      .sidebar {
+        transform: translateX(-100%);
+        position: fixed;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        z-index: 40;
+      }
+
+      .sidebar.active {
+        transform: translateX(0);
+      }
+    }
+
+    .sidebar-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(0, 0, 0, 0.5);
+      z-index: 30;
+    }
+
+    .sidebar-overlay.active {
+      display: block;
+    }
   </style>
 </head>
 
@@ -152,7 +338,7 @@
   <!-- Authentication Modal -->
   <div id="authModal" class="modal active">
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-md">
-      <h2 class="text-2xl font-bold mb-4 text-center">Login</h2>
+      <h2 class="text-2xl font-bold mb-4 text-center">Fraud Detection System Login</h2>
       <form id="loginForm" class="space-y-4">
         <div>
           <label for="username" class="block text-sm font-medium mb-1">Username</label>
@@ -170,352 +356,982 @@
           <label for="role" class="block text-sm font-medium mb-1">Role</label>
           <select id="role"
             class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-base">
-            <option value="hr">HR</option>
-            <option value="manager">Manager</option>
-            <option value="auditor">Auditor</option>
+            <option value="hr">HR Manager</option>
+            <option value="manager">Department Manager</option>
+            <option value="auditor">Internal Auditor</option>
+            <option value="executive">Executive</option>
           </select>
         </div>
         <button type="submit"
           class="w-full bg-primary hover:bg-primary/90 text-white py-2 px-4 rounded-lg transition">Login</button>
         <p class="text-xs text-center text-gray-500 dark:text-gray-400 mt-2">
-          Demo: Enter any username/password. Select your role to see different access levels.
+          Based on research: "A Comprehensive Analysis of Behavioral Patterns for Fraudulent Employees"
         </p>
       </form>
     </div>
   </div>
 
   <div class="min-h-screen flex flex-col">
-    <!-- Header -->
-    <header class="bg-white dark:bg-gray-900 shadow-md">
-      <div class="container mx-auto px-4 py-4 flex flex-col md:flex-row justify-between items-center">
-        <div class="flex items-center mb-2 md:mb-0">
+    <!-- Mobile Sidebar Toggle -->
+    <button id="sidebarToggle" class="fixed top-4 left-4 z-20 p-2 rounded-lg bg-white dark:bg-gray-800 shadow-md md:hidden">
+      <i class="fas fa-bars"></i>
+    </button>
+
+    <!-- Sidebar Overlay -->
+    <div id="sidebarOverlay" class="sidebar-overlay"></div>
+
+    <!-- Sidebar Navigation -->
+    <div id="sidebar" class="sidebar w-64 bg-white dark:bg-gray-900 shadow-md flex-shrink-0 fixed h-full z-40">
+      <div class="p-4 border-b border-gray-200 dark:border-gray-700">
+        <div class="flex items-center">
           <i class="fas fa-shield-alt text-primary text-2xl mr-3"></i>
-          <h1 class="text-xl md:text-2xl font-bold">Employee Behavior Monitoring</h1>
-        </div>
-        <div class="flex items-center space-x-2">
-          <div class="relative">
-            <button id="alertsDropdown"
-              class="p-2 rounded-full text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors relative">
-              <i class="fas fa-bell text-lg"></i>
-              <span id="alertCount"
-                class="absolute top-0 right-0 bg-risk-high text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">3</span>
-            </button>
-            <div id="alertsPanel"
-              class="hidden absolute right-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-lg shadow-lg z-30 overflow-hidden">
-              <div
-                class="p-3 bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 flex justify-between items-center">
-                <h3 class="font-semibold">Recent Alerts</h3>
-                <button id="markAllRead" class="text-xs text-primary hover:underline">Mark all as read</button>
-              </div>
-              <div class="max-h-96 overflow-y-auto">
-                <div
-                  class="p-3 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750 transition">
-                  <div class="flex items-center">
-                    <span class="risk-indicator risk-high"></span>
-                    <span class="font-medium">John Doe - Financial Discrepancy</span>
-                  </div>
-                  <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Unauthorized transaction
-                    attempt at 5:32 PM</p>
-                  <div class="flex justify-between items-center mt-2 text-xs">
-                    <span class="text-gray-500">10 min ago</span>
-                    <button class="text-primary hover:underline">View</button>
-                  </div>
-                </div>
-                <div
-                  class="p-3 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750 transition">
-                  <div class="flex items-center">
-                    <span class="risk-indicator risk-medium"></span>
-                    <span class="font-medium">Sarah Johnson - Vacation Avoidance</span>
-                  </div>
-                  <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">No vacation taken in 12
-                    months</p>
-                  <div class="flex justify-between items-center mt-2 text-xs">
-                    <span class="text-gray-500">1 hour ago</span>
-                    <button class="text-primary hover:underline">View</button>
-                  </div>
-                </div>
-                <div
-                  class="p-3 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750 transition">
-                  <div class="flex items-center">
-                    <span class="risk-indicator risk-high"></span>
-                    <span class="font-medium">Mike Williams - Unusual Secrecy</span>
-                  </div>
-                  <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">After-hours access to payroll
-                    database</p>
-                  <div class="flex justify-between items-center mt-2 text-xs">
-                    <span class="text-gray-500">2 hours ago</span>
-                    <button class="text-primary hover:underline">View</button>
-                  </div>
-                </div>
-              </div>
-              <div class="p-2 bg-gray-100 dark:bg-gray-700 text-center">
-                <a href="#" class="text-sm text-primary hover:underline">View All Alerts</a>
-              </div>
-            </div>
-          </div>
-          <button id="theme-toggle"
-            class="p-2 rounded-full text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
-            <i class="fas fa-moon dark:hidden"></i>
-            <i class="fas fa-sun hidden dark:inline"></i>
-          </button>
-          <div class="relative">
-            <button id="userDropdown"
-              class="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
-              <img id="userAvatar" class="w-8 h-8 rounded-full" src="https://picsum.photos/200" alt="User avatar">
-              <span id="userName" class="hidden md:inline font-medium">User Name</span>
-              <i class="fas fa-chevron-down text-xs"></i>
-            </button>
-            <div id="userPanel"
-              class="hidden absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg z-30">
-              <div class="p-3 border-b border-gray-200 dark:border-gray-600">
-                <p id="userRole" class="text-sm text-gray-600 dark:text-gray-400">Role: <span
-                    class="font-medium">Manager</span></p>
-              </div>
-              <div class="p-2">
-                <button id="logoutBtn"
-                  class="w-full text-left px-3 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition text-sm">
-                  <i class="fas fa-sign-out-alt mr-2"></i> Logout
-                </button>
-              </div>
-            </div>
-          </div>
+          <h1 class="text-xl font-bold">Fraud Detection</h1>
         </div>
       </div>
-    </header>
-
-    <!-- Floating Toast Notification Container -->
-    <div id="toastContainer" class="fixed top-5 right-5 z-50 w-72 space-y-3">
-      <!-- Toasts will be dynamically added here -->
+      <nav class="p-4">
+        <ul class="space-y-2">
+          <li>
+            <a href="#" class="nav-link active flex items-center p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
+              <i class="fas fa-chart-line mr-3"></i>
+              <span>Dashboard</span>
+            </a>
+          </li>
+          <li>
+            <a href="#" class="nav-link flex items-center p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
+              <i class="fas fa-users mr-3"></i>
+              <span>Employee Monitoring</span>
+            </a>
+          </li>
+          <li>
+            <a href="#" class="nav-link flex items-center p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
+              <i class="fas fa-chart-pie mr-3"></i>
+              <span>Behavioral Analytics</span>
+            </a>
+          </li>
+          <li>
+            <a href="#" class="nav-link flex items-center p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
+              <i class="fas fa-brain mr-3"></i>
+              <span>Psychosocial Factors</span>
+            </a>
+          </li>
+          <li>
+            <a href="#" class="nav-link flex items-center p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
+              <i class="fas fa-bell mr-3"></i>
+              <span>Alerts & Notifications</span>
+            </a>
+          </li>
+          <li>
+            <a href="#" class="nav-link flex items-center p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
+              <i class="fas fa-cog mr-3"></i>
+              <span>System Settings</span>
+            </a>
+          </li>
+          <li>
+            <a href="#" class="nav-link flex items-center p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
+              <i class="fas fa-book mr-3"></i>
+              <span>Research Documentation</span>
+            </a>
+          </li>
+        </ul>
+      </nav>
     </div>
 
-    <!-- Main Content -->
-    <main class="flex-grow container mx-auto px-4 py-6">
-      <!-- Dashboard Header -->
-      <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-        <div>
-          <h2 class="text-2xl font-bold">Employee Monitoring Dashboard</h2>
-          <p class="text-gray-600 dark:text-gray-400">Real-time behavioral risk indicators</p>
-        </div>
-        <div class="flex flex-col sm:flex-row gap-3">
-          <div class="relative">
-            <input type="text" placeholder="Search employees..."
-              class="pl-10 pr-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-base w-full">
-            <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+    <!-- Main Content Area -->
+    <div class="flex-1 flex flex-col md:pl-64">
+      <!-- Header -->
+      <header class="bg-white dark:bg-gray-900 shadow-md">
+        <div class="container mx-auto px-4 py-4 flex flex-col md:flex-row justify-between items-center">
+          <div class="flex items-center mb-2 md:mb-0">
+            <h1 class="text-xl md:text-2xl font-bold">Fraudulent Employee Behavior Detection System</h1>
           </div>
-          <button id="exportBtn"
-            class="flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-white py-2 px-4 rounded-lg transition">
-            <i class="fas fa-download"></i>
-            <span>Export Report</span>
+          <div class="flex items-center space-x-2">
+            <div class="relative">
+              <button id="alertsDropdown"
+                class="p-2 rounded-full text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors relative">
+                <i class="fas fa-bell text-lg"></i>
+                <span id="alertCount"
+                  class="absolute top-0 right-0 bg-risk-high text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">5</span>
+              </button>
+              <div id="alertsPanel"
+                class="hidden absolute right-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-lg shadow-lg z-30 overflow-hidden">
+                <div
+                  class="p-3 bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 flex justify-between items-center">
+                  <h3 class="font-semibold">Recent Alerts</h3>
+                  <button id="markAllRead" class="text-xs text-primary hover:underline">Mark all as read</button>
+                </div>
+                <div class="max-h-96 overflow-y-auto">
+                  <div
+                    class="p-3 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750 transition">
+                    <div class="flex items-center">
+                      <span class="risk-indicator risk-high"></span>
+                      <span class="font-medium">John Doe - Financial Discrepancy</span>
+                    </div>
+                    <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Multiple unauthorized transactions detected</p>
+                    <div class="flex mt-2 flex-wrap gap-1">
+                      <span class="behavior-tag behavior-financial">Financial Pressure</span>
+                      <span class="behavior-tag behavior-reporting">Reporting Discrepancies</span>
+                    </div>
+                    <div class="flex justify-between items-center mt-2 text-xs">
+                      <span class="text-gray-500">10 min ago</span>
+                      <button class="text-primary hover:underline">View</button>
+                    </div>
+                  </div>
+                  <div
+                    class="p-3 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750 transition">
+                    <div class="flex items-center">
+                      <span class="risk-indicator risk-medium"></span>
+                      <span class="font-medium">Sarah Johnson - Lifestyle Change</span>
+                    </div>
+                    <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Unexplained lifestyle improvements</p>
+                    <div class="flex mt-2 flex-wrap gap-1">
+                      <span class="behavior-tag behavior-lifestyle">Lifestyle Change</span>
+                    </div>
+                    <div class="flex justify-between items-center mt-2 text-xs">
+                      <span class="text-gray-500">1 hour ago</span>
+                      <button class="text-primary hover:underline">View</button>
+                    </div>
+                  </div>
+                  <div
+                    class="p-3 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750 transition">
+                    <div class="flex items-center">
+                      <span class="risk-indicator risk-high"></span>
+                      <span class="font-medium">Mike Williams - Unusual Secrecy</span>
+                    </div>
+                    <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">After-hours access to sensitive systems</p>
+                    <div class="flex mt-2 flex-wrap gap-1">
+                      <span class="behavior-tag behavior-secrecy">Work Secrecy</span>
+                      <span class="behavior-tag behavior-vacation">Vacation Avoidance</span>
+                    </div>
+                    <div class="flex justify-between items-center mt-2 text-xs">
+                      <span class="text-gray-500">2 hours ago</span>
+                      <button class="text-primary hover:underline">View</button>
+                    </div>
+                  </div>
+                  <div
+                    class="p-3 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750 transition">
+                    <div class="flex items-center">
+                      <span class="risk-indicator risk-medium"></span>
+                      <span class="font-medium">Lisa Brown - Vacation Avoidance</span>
+                    </div>
+                    <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">No vacation taken in 14 months</p>
+                    <div class="flex mt-2 flex-wrap gap-1">
+                      <span class="behavior-tag behavior-vacation">Vacation Avoidance</span>
+                    </div>
+                    <div class="flex justify-between items-center mt-2 text-xs">
+                      <span class="text-gray-500">3 hours ago</span>
+                      <button class="text-primary hover:underline">View</button>
+                    </div>
+                  </div>
+                  <div
+                    class="p-3 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750 transition">
+                    <div class="flex items-center">
+                      <span class="risk-indicator risk-high"></span>
+                      <span class="font-medium">David Wilson - Financial Reporting</span>
+                    </div>
+                    <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Discrepancies in expense reports</p>
+                    <div class="flex mt-2 flex-wrap gap-1">
+                      <span class="behavior-tag behavior-reporting">Reporting Discrepancies</span>
+                      <span class="behavior-tag behavior-financial">Financial Pressure</span>
+                    </div>
+                    <div class="flex justify-between items-center mt-2 text-xs">
+                      <span class="text-gray-500">5 hours ago</span>
+                      <button class="text-primary hover:underline">View</button>
+                    </div>
+                  </div>
+                </div>
+                <div class="p-2 bg-gray-100 dark:bg-gray-700 text-center">
+                  <a href="#" class="text-sm text-primary hover:underline">View All Alerts</a>
+                </div>
+              </div>
+            </div>
+            <button id="theme-toggle"
+              class="p-2 rounded-full text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+              <i class="fas fa-moon dark:hidden"></i>
+              <i class="fas fa-sun hidden dark:inline"></i>
+            </button>
+            <div class="relative">
+              <button id="userDropdown"
+                class="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+                <img id="userAvatar" class="w-8 h-8 rounded-full" src="https://picsum.photos/200" alt="User avatar">
+                <span id="userName" class="hidden md:inline font-medium">User Name</span>
+                <i class="fas fa-chevron-down text-xs"></i>
+              </button>
+              <div id="userPanel"
+                class="hidden absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg z-30">
+                <div class="p-3 border-b border-gray-200 dark:border-gray-600">
+                  <p id="userRole" class="text-sm text-gray-600 dark:text-gray-400">Role: <span
+                      class="font-medium">Manager</span></p>
+                </div>
+                <div class="p-2">
+                  <button id="logoutBtn"
+                    class="w-full text-left px-3 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition text-sm">
+                    <i class="fas fa-sign-out-alt mr-2"></i> Logout
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <!-- Floating Toast Notification Container -->
+      <div id="toastContainer" class="fixed top-5 right-5 z-50 w-72 space-y-3">
+        <!-- Toasts will be dynamically added here -->
+      </div>
+
+      <!-- Main Content -->
+      <main class="flex-grow container mx-auto px-4 py-6">
+        <!-- Dashboard Header -->
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+          <div>
+            <h2 class="text-2xl font-bold">Fraud Detection Dashboard</h2>
+            <p class="text-gray-600 dark:text-gray-400">Monitoring behavioral patterns identified in research</p>
+          </div>
+          <div class="flex flex-col sm:flex-row gap-3">
+            <div class="relative">
+              <input type="text" placeholder="Search employees..."
+                class="pl-10 pr-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-base w-full">
+              <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+            </div>
+            <button id="exportBtn"
+              class="flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-white py-2 px-4 rounded-lg transition">
+              <i class="fas fa-download"></i>
+              <span>Export Report</span>
+            </button>
+            <button id="predictiveBtn"
+              class="flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg transition">
+              <i class="fas fa-robot"></i>
+              <span>Run Predictive Model</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Behavioral Patterns Summary -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+          <!-- Behavioral Patterns Chart -->
+          <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <h3 class="text-lg font-semibold mb-4">Behavioral Patterns Distribution</h3>
+            <div class="h-64">
+              <canvas id="behaviorChart"></canvas>
+            </div>
+          </div>
+          
+          <!-- Psychosocial Factors -->
+          <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <h3 class="text-lg font-semibold mb-4">Psychosocial Factors</h3>
+            <div class="grid grid-cols-2 gap-4">
+              <div class="psycho-card bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
+                <div class="flex items-center mb-2">
+                  <div class="p-2 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300 mr-3">
+                    <i class="fas fa-money-bill-wave"></i>
+                  </div>
+                  <h4 class="font-medium">Financial Pressure</h4>
+                </div>
+                <p class="text-sm text-gray-600 dark:text-gray-400">69.8% of cases</p>
+              </div>
+              <div class="psycho-card bg-purple-50 dark:bg-purple-900/20 p-4 rounded-lg">
+                <div class="flex items-center mb-2">
+                  <div class="p-2 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-300 mr-3">
+                    <i class="fas fa-user-tie"></i>
+                  </div>
+                  <h4 class="font-medium">Personal Gain</h4>
+                </div>
+                <p class="text-sm text-gray-600 dark:text-gray-400">14% of cases</p>
+              </div>
+              <div class="psycho-card bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg">
+                <div class="flex items-center mb-2">
+                  <div class="p-2 rounded-full bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-300 mr-3">
+                    <i class="fas fa-sad-tear"></i>
+                  </div>
+                  <h4 class="font-medium">Job Dissatisfaction</h4>
+                </div>
+                <p class="text-sm text-gray-600 dark:text-gray-400">7% of cases</p>
+              </div>
+              <div class="psycho-card bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
+                <div class="flex items-center mb-2">
+                  <div class="p-2 rounded-full bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-300 mr-3">
+                    <i class="fas fa-users"></i>
+                  </div>
+                  <h4 class="font-medium">Peer Influence</h4>
+                </div>
+                <p class="text-sm text-gray-600 dark:text-gray-400">4.7% of cases</p>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Risk Timeline -->
+          <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <h3 class="text-lg font-semibold mb-4">Recent Risk Events</h3>
+            <div class="risk-timeline">
+              <div class="timeline-item high">
+                <p class="font-medium">John Doe - High Risk</p>
+                <p class="text-sm text-gray-600 dark:text-gray-400">Financial discrepancy detected</p>
+                <p class="text-xs text-gray-500">10 minutes ago</p>
+              </div>
+              <div class="timeline-item medium">
+                <p class="font-medium">Sarah Johnson - Medium Risk</p>
+                <p class="text-sm text-gray-600 dark:text-gray-400">Unexplained lifestyle changes</p>
+                <p class="text-xs text-gray-500">1 hour ago</p>
+              </div>
+              <div class="timeline-item high">
+                <p class="font-medium">Mike Williams - High Risk</p>
+                <p class="text-sm text-gray-600 dark:text-gray-400">After-hours system access</p>
+                <p class="text-xs text-gray-500">2 hours ago</p>
+              </div>
+              <div class="timeline-item medium">
+                <p class="font-medium">Lisa Brown - Medium Risk</p>
+                <p class="text-sm text-gray-600 dark:text-gray-400">Vacation avoidance</p>
+                <p class="text-xs text-gray-500">3 hours ago</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Risk Summary Indicators -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 flex items-center">
+            <div class="p-3 rounded-full bg-red-100 dark:bg-red-900/30 text-risk-high mr-4">
+              <i class="fas fa-exclamation-triangle text-xl"></i>
+            </div>
+            <div>
+              <p class="text-sm text-gray-600 dark:text-gray-400">High Risk Employees</p>
+              <p class="text-xl font-bold">7 Employees</p>
+            </div>
+          </div>
+          <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 flex items-center">
+            <div class="p-3 rounded-full bg-yellow-100 dark:bg-yellow-900/30 text-risk-medium mr-4">
+              <i class="fas fa-triangle-exclamation text-xl"></i>
+            </div>
+            <div>
+              <p class="text-sm text-gray-600 dark:text-gray-400">Medium Risk Employees</p>
+              <p class="text-xl font-bold">15 Employees</p>
+            </div>
+          </div>
+          <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 flex items-center">
+            <div class="p-3 rounded-full bg-green-100 dark:bg-green-900/30 text-risk-low mr-4">
+              <i class="fas fa-check-circle text-xl"></i>
+            </div>
+            <div>
+              <p class="text-sm text-gray-600 dark:text-gray-400">Low Risk Employees</p>
+              <p class="text-xl font-bold">128 Employees</p>
+            </div>
+          </div>
+          <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 flex items-center">
+            <div class="p-3 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-500 mr-4">
+              <i class="fas fa-bell text-xl"></i>
+            </div>
+            <div>
+              <p class="text-sm text-gray-600 dark:text-gray-400">Active Alerts</p>
+              <p class="text-xl font-bold">12 Alerts</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Department Filter Tabs -->
+        <div class="border-b border-gray-200 dark:border-gray-700">
+          <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+            <button class="tab-btn active" data-tab="all">All Departments</button>
+            <button class="tab-btn" data-tab="finance">Finance</button>
+            <button class="tab-btn" data-tab="hr">HR</button>
+            <button class="tab-btn" data-tab="procurement">Procurement</button>
+            <button class="tab-btn" data-tab="operations">Operations</button>
+          </nav>
+        </div>
+
+        <!-- Employee Table -->
+        <div class="mt-6">
+          <div class="overflow-x-auto">
+            <table class="min-w-full leading-normal table-striped">
+              <thead>
+                <tr>
+                  <th class="table-header">Employee</th>
+                  <th class="table-header">Department</th>
+                  <th class="table-header">Risk Level</th>
+                  <th class="table-header">Behavioral Patterns</th>
+                  <th class="table-header">Psychosocial Factors</th>
+                  <th class="table-header">Last Activity</th>
+                  <th class="table-header">Details</th>
+                </tr>
+              </thead>
+              <tbody>
+                  <!-- John Doe -->
+                  <tr>
+                    <td class="table-cell">John Linglong</td>
+                    <td class="table-cell">Finance</td>
+                    <td class="table-cell"><span class="risk-indicator risk-high"></span> High</td>
+                    <td class="table-cell">
+                      <div class="flex flex-wrap gap-1">
+                        <span class="behavior-tag behavior-financial">Financial Discrepancies</span>
+                        <span class="behavior-tag behavior-secrecy">Work Secrecy</span>
+                      </div>
+                    </td>
+                    <td class="table-cell">
+                      <div class="flex flex-wrap gap-1">
+                        <span class="behavior-tag behavior-financial">Financial Pressure</span>
+                        <span class="behavior-tag behavior-lifestyle">Lifestyle Inflation</span>
+                      </div>
+                    </td>
+                    <td class="table-cell">2 hours ago</td>
+                    <td class="table-cell">
+                      <button class="view-details-btn text-primary hover:underline"
+                        data-employee="john-doe">View</button>
+                    </td>
+                  </tr>
+                  <tr class="employee-details" id="john-doe-details">
+                    <td colspan="7">
+                      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
+                        <div>
+                          <h4 class="font-bold mb-2">Behavioral Patterns</h4>
+                          <ul class="list-disc pl-5 space-y-1">
+                            <li>Unexplained financial discrepancies in reports</li>
+                            <li>Unusual secrecy about work activities</li>
+                            <li>After-hours access to financial systems</li>
+                            <li>Reluctance to take vacation time</li>
+                          </ul>
+                        </div>
+                        <div>
+                          <h4 class="font-bold mb-2">Psychosocial Factors</h4>
+                          <ul class="list-disc pl-5 space-y-1">
+                            <li>Recent financial difficulties reported</li>
+                            <li>Significant lifestyle changes observed</li>
+                            <li>Expressed dissatisfaction with compensation</li>
+                            <li>Peer group includes other high-risk employees</li>
+                          </ul>
+                        </div>
+                        <div class="md:col-span-2">
+                          <h4 class="font-bold mb-2">Recommended Actions</h4>
+                          <div class="flex flex-wrap gap-2">
+                            <button class="bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 px-3 py-1 rounded-lg text-sm">Immediate Audit</button>
+                            <button class="bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200 px-3 py-1 rounded-lg text-sm">Temporary Suspension</button>
+                            <button class="bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 px-3 py-1 rounded-lg text-sm">Financial Counseling</button>
+                            <button class="bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 px-3 py-1 rounded-lg text-sm">Ethics Training</button>
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+  
+                  <!-- Jane Smith -->
+                  <tr>
+                    <td class="table-cell">Jane Smith</td>
+                    <td class="table-cell">HR</td>
+                    <td class="table-cell"><span class="risk-indicator risk-medium"></span> Medium</td>
+                    <td class="table-cell">
+                      <div class="flex flex-wrap gap-1">
+                        <span class="behavior-tag behavior-vacation">Vacation Avoidance</span>
+                        <span class="behavior-tag behavior-secrecy">Work Secrecy</span>
+                      </div>
+                    </td>
+                    <td class="table-cell">
+                      <div class="flex flex-wrap gap-1">
+                        <span class="behavior-tag behavior-financial">Job Dissatisfaction</span>
+                      </div>
+                    </td>
+                    <td class="table-cell">5 hours ago</td>
+                    <td class="table-cell">
+                      <button class="view-details-btn text-primary hover:underline"
+                        data-employee="jane-smith">View</button>
+                    </td>
+                  </tr>
+                  <tr class="employee-details" id="jane-smith-details">
+                    <td colspan="7">
+                      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
+                        <div>
+                          <h4 class="font-bold mb-2">Behavioral Patterns</h4>
+                          <ul class="list-disc pl-5 space-y-1">
+                            <li>No vacation taken in 12 months</li>
+                            <li>Reluctance to delegate sensitive tasks</li>
+                            <li>Unusual secrecy about HR processes</li>
+                            <li>Defensive when questioned about work</li>
+                          </ul>
+                        </div>
+                        <div>
+                          <h4 class="font-bold mb-2">Psychosocial Factors</h4>
+                          <ul class="list-disc pl-5 space-y-1">
+                            <li>Expressed feeling undervalued (73.8% correlation with fraud)</li>
+                            <li>Recent denied promotion request</li>
+                            <li>Increased financial obligations</li>
+                          </ul>
+                        </div>
+                        <div class="md:col-span-2">
+                          <h4 class="font-bold mb-2">Recommended Actions</h4>
+                          <div class="flex flex-wrap gap-2">
+                            <button class="bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200 px-3 py-1 rounded-lg text-sm">Mandatory Vacation</button>
+                            <button class="bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 px-3 py-1 rounded-lg text-sm">Performance Review</button>
+                            <button class="bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-200 px-3 py-1 rounded-lg text-sm">Job Satisfaction Survey</button>
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+  
+                  <!-- Mike Williams -->
+                  <tr>
+                    <td class="table-cell">Mike Williams</td>
+                    <td class="table-cell">Procurement</td>
+                    <td class="table-cell"><span class="risk-indicator risk-high"></span> High</td>
+                    <td class="table-cell">
+                      <div class="flex flex-wrap gap-1">
+                        <span class="behavior-tag behavior-secrecy">Work Secrecy</span>
+                        <span class="behavior-tag behavior-reporting">Reporting Discrepancies</span>
+                      </div>
+                    </td>
+                    <td class="table-cell">
+                      <div class="flex flex-wrap gap-1">
+                        <span class="behavior-tag behavior-financial">Financial Pressure</span>
+                        <span class="behavior-tag behavior-lifestyle">Peer Influence</span>
+                      </div>
+                    </td>
+                    <td class="table-cell">8 hours ago</td>
+                    <td class="table-cell">
+                      <button class="view-details-btn text-primary hover:underline"
+                        data-employee="mike-williams">View</button>
+                    </td>
+                  </tr>
+                  <tr class="employee-details" id="mike-williams-details">
+                    <td colspan="7">
+                      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
+                        <div>
+                          <h4 class="font-bold mb-2">Behavioral Patterns</h4>
+                          <ul class="list-disc pl-5 space-y-1">
+                            <li>After-hours access to procurement system</li>
+                            <li>Vendor payment discrepancies</li>
+                            <li>Unapproved vendor relationships</li>
+                            <li>Resistance to oversight</li>
+                          </ul>
+                        </div>
+                        <div>
+                          <h4 class="font-bold mb-2">Psychosocial Factors</h4>
+                          <ul class="list-disc pl-5 space-y-1">
+                            <li>Significant personal debt (69.8% correlation)</li>
+                            <li>Associates with known fraudulent employees</li>
+                            <li>Recent gambling activity reported</li>
+                          </ul>
+                        </div>
+                        <div class="md:col-span-2">
+                          <h4 class="font-bold mb-2">Recommended Actions</h4>
+                          <div class="flex flex-wrap gap-2">
+                            <button class="bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 px-3 py-1 rounded-lg text-sm">Forensic Audit</button>
+                            <button class="bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200 px-3 py-1 rounded-lg text-sm">System Access Revocation</button>
+                            <button class="bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 px-3 py-1 rounded-lg text-sm">Debt Counseling</button>
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+  
+                  <!-- Lisa Brown -->
+                  <tr>
+                    <td class="table-cell">Lisa Brown</td>
+                    <td class="table-cell">Finance</td>
+                    <td class="table-cell"><span class="risk-indicator risk-medium"></span> Medium</td>
+                    <td class="table-cell">
+                      <div class="flex flex-wrap gap-1">
+                        <span class="behavior-tag behavior-vacation">Vacation Avoidance</span>
+                        <span class="behavior-tag behavior-lifestyle">Lifestyle Change</span>
+                      </div>
+                    </td>
+                    <td class="table-cell">
+                      <div class="flex flex-wrap gap-1">
+                        <span class="behavior-tag behavior-financial">Financial Pressure</span>
+                      </div>
+                    </td>
+                    <td class="table-cell">1 day ago</td>
+                    <td class="table-cell">
+                      <button class="view-details-btn text-primary hover:underline"
+                        data-employee="lisa-brown">View</button>
+                    </td>
+                  </tr>
+                  <tr class="employee-details" id="lisa-brown-details">
+                    <td colspan="7">
+                      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
+                        <div>
+                          <h4 class="font-bold mb-2">Behavioral Patterns</h4>
+                          <ul class="list-disc pl-5 space-y-1">
+                            <li>No vacation in 14 months (58.1% correlation)</li>
+                            <li>Unexplained lifestyle improvements</li>
+                            <li>Unusual working hours</li>
+                          </ul>
+                        </div>
+                        <div>
+                          <h4 class="font-bold mb-2">Psychosocial Factors</h4>
+                          <ul class="list-disc pl-5 space-y-1">
+                            <li>Recent divorce with financial settlement</li>
+                            <li>Child custody battle expenses</li>
+                            <li>Expressed resentment toward management</li>
+                          </ul>
+                        </div>
+                        <div class="md:col-span-2">
+                          <h4 class="font-bold mb-2">Recommended Actions</h4>
+                          <div class="flex flex-wrap gap-2">
+                            <button class="bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200 px-3 py-1 rounded-lg text-sm">Mandatory Vacation</button>
+                            <button class="bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 px-3 py-1 rounded-lg text-sm">Financial Counseling</button>
+                            <button class="bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 px-3 py-1 rounded-lg text-sm">Employee Assistance</button>
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+  
+                  <!-- David Wilson -->
+                  <tr>
+                    <td class="table-cell">David Wilson</td>
+                    <td class="table-cell">IT</td>
+                    <td class="table-cell"><span class="risk-indicator risk-high"></span> High</td>
+                    <td class="table-cell">
+                      <div class="flex flex-wrap gap-1">
+                        <span class="behavior-tag behavior-secrecy">Work Secrecy</span>
+                        <span class="behavior-tag behavior-reporting">System Access</span>
+                      </div>
+                    </td>
+                    <td class="table-cell">
+                      <div class="flex flex-wrap gap-1">
+                        <span class="behavior-tag behavior-financial">Perceived Injustice</span>
+                      </div>
+                    </td>
+                    <td class="table-cell">2 days ago</td>
+                    <td class="table-cell">
+                      <button class="view-details-btn text-primary hover:underline"
+                        data-employee="david-wilson">View</button>
+                    </td>
+                  </tr>
+                  <tr class="employee-details" id="david-wilson-details">
+                    <td colspan="7">
+                      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
+                        <div>
+                          <h4 class="font-bold mb-2">Behavioral Patterns</h4>
+                          <ul class="list-disc pl-5 space-y-1">
+                            <li>Unauthorized access to sensitive systems (76.7% correlation)</li>
+                            <li>Creation of backdoor accounts</li>
+                            <li>Deletion of access logs</li>
+                            <li>Use of unauthorized software</li>
+                          </ul>
+                        </div>
+                        <div>
+                          <h4 class="font-bold mb-2">Psychosocial Factors</h4>
+                          <ul class="list-disc pl-5 space-y-1">
+                            <li>Passed over for promotion (45.2% correlation)</li>
+                            <li>Publicly critical of management decisions</li>
+                            <li>Expressed feelings of being undervalued</li>
+                          </ul>
+                        </div>
+                        <div class="md:col-span-2">
+                          <h4 class="font-bold mb-2">Recommended Actions</h4>
+                          <div class="flex flex-wrap gap-2">
+                            <button class="bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 px-3 py-1 rounded-lg text-sm">Immediate Termination</button>
+                            <button class="bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200 px-3 py-1 rounded-lg text-sm">System Audit</button>
+                            <button class="bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 px-3 py-1 rounded-lg text-sm">Legal Review</button>
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+  
+          <!-- Predictive Analytics Section -->
+          <div class="mt-8 bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <div class="flex justify-between items-center mb-4">
+              <h3 class="text-lg font-semibold">Predictive Fraud Risk Analysis</h3>
+              <button class="bg-primary hover:bg-primary/90 text-white py-2 px-4 rounded-lg transition">
+                <i class="fas fa-sync-alt mr-2"></i> Refresh Model
+              </button>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+                <h4 class="font-medium mb-3">Top Risk Indicators</h4>
+                <div class="space-y-3">
+                  <div>
+                    <div class="flex justify-between mb-1">
+                      <span class="text-sm font-medium">Financial Pressure</span>
+                      <span class="text-sm">87% correlation</span>
+                    </div>
+                    <div class="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2">
+                      <div class="bg-red-500 h-2 rounded-full" style="width: 87%"></div>
+                    </div>
+                  </div>
+                  <div>
+                    <div class="flex justify-between mb-1">
+                      <span class="text-sm font-medium">Vacation Avoidance</span>
+                      <span class="text-sm">72% correlation</span>
+                    </div>
+                    <div class="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2">
+                      <div class="bg-orange-500 h-2 rounded-full" style="width: 72%"></div>
+                    </div>
+                  </div>
+                  <div>
+                    <div class="flex justify-between mb-1">
+                      <span class="text-sm font-medium">Work Secrecy</span>
+                      <span class="text-sm">68% correlation</span>
+                    </div>
+                    <div class="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2">
+                      <div class="bg-yellow-500 h-2 rounded-full" style="width: 68%"></div>
+                    </div>
+                  </div>
+                  <div>
+                    <div class="flex justify-between mb-1">
+                      <span class="text-sm font-medium">Lifestyle Changes</span>
+                      <span class="text-sm">63% correlation</span>
+                    </div>
+                    <div class="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2">
+                      <div class="bg-blue-500 h-2 rounded-full" style="width: 63%"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="lg:col-span-2">
+                <h4 class="font-medium mb-3">Potential Fraud Cases</h4>
+                <div class="overflow-x-auto">
+                  <table class="min-w-full">
+                    <thead>
+                      <tr>
+                        <th class="table-header">Employee</th>
+                        <th class="table-header">Risk Score</th>
+                        <th class="table-header">Key Indicators</th>
+                        <th class="table-header">Probability</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr class="hover:bg-gray-50 dark:hover:bg-gray-750">
+                        <td class="table-cell">Robert Johnson</td>
+                        <td class="table-cell">
+                          <div class="flex items-center">
+                            <span class="risk-indicator risk-high"></span> 89/100
+                          </div>
+                        </td>
+                        <td class="table-cell">
+                          <div class="flex flex-wrap gap-1">
+                            <span class="behavior-tag behavior-financial">Financial</span>
+                            <span class="behavior-tag behavior-secrecy">Secrecy</span>
+                          </div>
+                        </td>
+                        <td class="table-cell">87%</td>
+                      </tr>
+                      <tr class="hover:bg-gray-50 dark:hover:bg-gray-750">
+                        <td class="table-cell">Emily Davis</td>
+                        <td class="table-cell">
+                          <div class="flex items-center">
+                            <span class="risk-indicator risk-medium"></span> 72/100
+                          </div>
+                        </td>
+                        <td class="table-cell">
+                          <div class="flex flex-wrap gap-1">
+                            <span class="behavior-tag behavior-vacation">Vacation</span>
+                            <span class="behavior-tag behavior-lifestyle">Lifestyle</span>
+                          </div>
+                        </td>
+                        <td class="table-cell">68%</td>
+                      </tr>
+                      <tr class="hover:bg-gray-50 dark:hover:bg-gray-750">
+                        <td class="table-cell">Michael Chen</td>
+                        <td class="table-cell">
+                          <div class="flex items-center">
+                            <span class="risk-indicator risk-medium"></span> 65/100
+                          </div>
+                        </td>
+                        <td class="table-cell">
+                          <div class="flex flex-wrap gap-1">
+                            <span class="behavior-tag behavior-reporting">Reporting</span>
+                          </div>
+                        </td>
+                        <td class="table-cell">59%</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </main>
+  
+        <!-- Footer -->
+        <footer class="bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 py-4">
+          <div class="container mx-auto px-4 text-center text-sm text-gray-600 dark:text-gray-400">
+            <p>Fraudulent Employee Behavior Detection System v1.0</p>
+            <p class="mt-1">Based on research: "A Comprehensive Analysis of Behavioral Patterns for Fraudulent Employees"</p>
+          </div>
+        </footer>
+      </div>
+    </div>
+  
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        // Authentication
+        const authModal = document.getElementById('authModal');
+        const body = document.body;
+  
+        document.getElementById('loginForm').addEventListener('submit', (e) => {
+          e.preventDefault();
+          const username = document.getElementById('username').value;
+          const role = document.getElementById('role').value;
+          
+          document.getElementById('userName').textContent = username;
+          document.getElementById('userRole').innerHTML = `Role: <span class="font-medium">${role.charAt(0).toUpperCase() + role.slice(1)}</span>`;
+          
+          authModal.classList.remove('active');
+          body.classList.remove('modal-open');
+          
+          // Show welcome toast
+          showToast(`Welcome, ${username}!`, 'success');
+        });
+  
+        // Theme toggle
+        document.getElementById('theme-toggle').addEventListener('click', () => {
+          document.documentElement.classList.toggle('dark');
+          localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+        });
+  
+        // Initialize theme from localStorage
+        if (localStorage.getItem('theme') === 'dark' || (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+          document.documentElement.classList.add('dark');
+        }
+  
+        // Dropdowns
+        document.querySelectorAll('.dropdown-btn').forEach(btn => {
+          btn.addEventListener('click', function() {
+            const panelId = this.id.replace('Dropdown', 'Panel');
+            const panel = document.getElementById(panelId);
+            panel.classList.toggle('hidden');
+          });
+        });
+  
+        // Close dropdowns when clicking outside
+        document.addEventListener('click', (e) => {
+          if (!e.target.closest('.relative')) {
+            document.querySelectorAll('.dropdown-panel').forEach(panel => {
+              panel.classList.add('hidden');
+            });
+          }
+        });
+  
+        // Employee details toggle
+        document.querySelectorAll('.view-details-btn').forEach(button => {
+          button.addEventListener('click', function() {
+            const employee = this.dataset.employee;
+            const detailsRow = document.getElementById(`${employee}-details`);
+            detailsRow.classList.toggle('active');
+          });
+        });
+  
+        // Department tabs
+        document.querySelectorAll('.tab-btn').forEach(tab => {
+          tab.addEventListener('click', function() {
+            document.querySelectorAll('.tab-btn').forEach(t => t.classList.remove('active'));
+            this.classList.add('active');
+            // Here you would filter the table by department
+          });
+        });
+  
+        // Logout
+        document.getElementById('logoutBtn').addEventListener('click', () => {
+          authModal.classList.add('active');
+          body.classList.add('modal-open');
+          showToast('You have been logged out', 'info');
+        });
+  
+        // Mark all alerts as read
+        document.getElementById('markAllRead').addEventListener('click', () => {
+          document.getElementById('alertCount').textContent = '0';
+          showToast('All alerts marked as read', 'success');
+        });
+  
+        // Sidebar toggle for mobile
+        const sidebarToggle = document.getElementById('sidebarToggle');
+        const sidebar = document.getElementById('sidebar');
+        const sidebarOverlay = document.getElementById('sidebarOverlay');
+        
+        sidebarToggle.addEventListener('click', () => {
+          sidebar.classList.toggle('active');
+          sidebarOverlay.classList.toggle('active');
+        });
+        
+        sidebarOverlay.addEventListener('click', () => {
+          sidebar.classList.remove('active');
+          sidebarOverlay.classList.remove('active');
+        });
+  
+        // Initialize charts
+        initCharts();
+  
+        // Show authentication modal on page load
+        authModal.classList.add('active');
+        body.classList.add('modal-open');
+      });
+  
+      function initCharts() {
+        // Behavioral Patterns Chart
+        const behaviorCtx = document.getElementById('behaviorChart').getContext('2d');
+        new Chart(behaviorCtx, {
+          type: 'doughnut',
+          data: {
+            labels: ['Financial Discrepancies', 'Lifestyle Changes', 'Work Secrecy', 'Vacation Avoidance', 'Reporting Issues'],
+            datasets: [{
+              data: [32.6, 74.4, 76.7, 58.1, 41.9],
+              backgroundColor: [
+                '#3B82F6',
+                '#8B5CF6',
+                '#EC4899',
+                '#14B8A6',
+                '#F97316'
+              ],
+              borderWidth: 0
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                position: 'right',
+                labels: {
+                  usePointStyle: true,
+                  padding: 20
+                }
+              }
+            },
+            cutout: '70%'
+          }
+        });
+      }
+  
+      function showToast(message, type = 'info') {
+        const toastContainer = document.getElementById('toastContainer');
+        const toast = document.createElement('div');
+        toast.className = `bg-white dark:bg-gray-800 shadow-md rounded-lg p-4 flex items-start border-l-4 ${
+          type === 'success' ? 'border-green-500' : 
+          type === 'error' ? 'border-red-500' : 
+          type === 'warning' ? 'border-yellow-500' : 'border-blue-500'
+        }`;
+        
+        let icon;
+        if (type === 'success') icon = 'fa-check-circle text-green-500';
+        else if (type === 'error') icon = 'fa-exclamation-circle text-red-500';
+        else if (type === 'warning') icon = 'fa-exclamation-triangle text-yellow-500';
+        else icon = 'fa-info-circle text-blue-500';
+        
+        toast.innerHTML = `
+          <i class="fas ${icon} mr-3 mt-1"></i>
+          <div class="flex-1">
+            <p class="text-sm font-medium">${message}</p>
+          </div>
+          <button class="ml-4 text-gray-400 hover:text-gray-500">
+            <i class="fas fa-times"></i>
           </button>
-        </div>
-      </div>
-
-      <!-- Risk Summary Indicators -->
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 flex items-center">
-          <div class="p-3 rounded-full bg-red-100 dark:bg-red-900/30 text-risk-high mr-4">
-            <i class="fas fa-exclamation-triangle text-xl"></i>
-          </div>
-          <div>
-            <p class="text-sm text-gray-600 dark:text-gray-400">High Risk</p>
-            <p class="text-xl font-bold">7 Employees</p>
-          </div>
-        </div>
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 flex items-center">
-          <div class="p-3 rounded-full bg-yellow-100 dark:bg-yellow-900/30 text-risk-medium mr-4">
-            <i class="fas fa-triangle-exclamation text-xl"></i>
-          </div>
-          <div>
-            <p class="text-sm text-gray-600 dark:text-gray-400">Medium Risk</p>
-            <p class="text-xl font-bold">15 Employees</p>
-          </div>
-        </div>
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 flex items-center">
-          <div class="p-3 rounded-full bg-green-100 dark:bg-green-900/30 text-risk-low mr-4">
-            <i class="fas fa-check-circle text-xl"></i>
-          </div>
-          <div>
-            <p class="text-sm text-gray-600 dark:text-gray-400">Low Risk</p>
-            <p class="text-xl font-bold">128 Employees</p>
-          </div>
-        </div>
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 flex items-center">
-          <div class="p-3 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-500 mr-4">
-            <i class="fas fa-bell text-xl"></i>
-          </div>
-          <div>
-            <p class="text-sm text-gray-600 dark:text-gray-400">Active Alerts</p>
-            <p class="text-xl font-bold">12 Alerts</p>
-          </div>
-        </div>
-      </div>
-
-      <!-- Department Filter Tabs -->
-      <div class="border-b border-gray-200 dark:border-gray-700">
-        <nav class="-mb-px flex space-x-8" aria-label="Tabs">
-          <button class="tab-btn active" data-tab="all">All Departments</button>
-          <button class="tab-btn" data-tab="hr">HR</button>
-          <button class="tab-btn" data-tab="finance">Finance</button>
-          <button class="tab-btn" data-tab="it">IT</button>
-          <button class="tab-btn" data-tab="marketing">Marketing</button>
-        </nav>
-      </div>
-
-      <!-- Employee Table -->
-      <div class="mt-6">
-        <div class="overflow-x-auto">
-          <table class="min-w-full leading-normal table-striped">
-            <thead>
-              <tr>
-                <th class="table-header">Employee</th>
-                <th class="table-header">Department</th>
-                <th class="table-header">Risk Level</th>
-                <th class="table-header">Last Activity</th>
-                <th class="table-header">Details</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td class="table-cell">John Doe</td>
-                <td class="table-cell">Finance</td>
-                <td class="table-cell"><span class="risk-indicator risk-high"></span> High</td>
-                <td class="table-cell">2 hours ago</td>
-                <td class="table-cell">
-                  <button class="view-details-btn text-primary hover:underline"
-                    data-employee="john-doe">View</button>
-                </td>
-              </tr>
-              <tr class="employee-details" id="john-doe-details">
-                <td colspan="5">
-                  <!-- Risk details for John Doe -->
-                  <p><strong>Financial Discrepancy Details:</strong></p>
-                  <p>Unauthorized transaction attempt at 5:32 PM.</p>
-                  <p>Transaction amount: $5000.</p>
-                </td>
-              </tr>
-              <tr>
-                <td class="table-cell">Jane Smith</td>
-                <td class="table-cell">HR</td>
-                <td class="table-cell"><span class="risk-indicator risk-medium"></span> Medium</td>
-                <td class="table-cell">5 hours ago</td>
-                <td class="table-cell">
-                  <button class="view-details-btn text-primary hover:underline"
-                    data-employee="jane-smith">View</button>
-                </td>
-              </tr>
-              <tr class="employee-details" id="jane-smith-details">
-                <td colspan="5">
-                  <!-- Risk details for Jane Smith -->
-                  <p><strong>Vacation Avoidance Details:</strong></p>
-                  <p>No vacation taken in 12 months.</p>
-                  <p>Repeatedly declined vacation requests.</p>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </main>
-  </div>
-
-  <script>
-    document.addEventListener('DOMContentLoaded', () => {
-      const authModal = document.getElementById('authModal');
-      const body = document.body;
-
-      document.getElementById('loginForm').addEventListener('submit', (e) => {
-        e.preventDefault();
-        authModal.classList.remove('active');
-        body.classList.remove('modal-open');
-      });
-
-      document.querySelectorAll('.tab-btn').forEach(tab => {
-        tab.addEventListener('click', function () {
-          document.querySelectorAll('.tab-btn').forEach(t => t.classList.remove('active'));
-          this.classList.add('active');
+        `;
+        
+        const closeBtn = toast.querySelector('button');
+        closeBtn.addEventListener('click', () => {
+          toast.remove();
         });
-      });
-
-      document.querySelectorAll('.dropdown-btn').forEach(btn => {
-        btn.addEventListener('click', function () {
-          const panelId = this.id.replace('Dropdown', 'Panel');
-          const panel = document.getElementById(panelId);
-          panel.classList.toggle('hidden');
-        });
-      });
-
-      document.getElementById('theme-toggle').addEventListener('click', () => {
-        document.documentElement.classList.toggle('dark');
-      });
-
-      const viewDetailsButtons = document.querySelectorAll('.view-details-btn');
-      viewDetailsButtons.forEach(button => {
-        button.addEventListener('click', function () {
-          const employee = this.dataset.employee;
-          const detailsRow = document.getElementById(`${employee}-details`);
-          detailsRow.classList.toggle('active');
-        });
-      });
-
-      // Show authentication modal on page load
-      authModal.classList.add('active');
-      body.classList.add('modal-open');
-    });
-  </script>
-
-  <style>
-    .input-style {
-      @apply w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-base;
-    }
-
-    .select-style {
-      @apply w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-base;
-    }
-
-    .dropdown-btn {
-      @apply p-2 rounded-full text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors relative;
-    }
-
-    .dropdown-panel {
-      @apply hidden absolute right-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-lg shadow-lg z-30 overflow-hidden;
-    }
-
-    .panel-header {
-      @apply p-3 bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 flex justify-between items-center;
-    }
-
-    .panel-item {
-      @apply p-3 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750 transition;
-    }
-
-    .panel-footer {
-      @apply p-2 bg-gray-100 dark:bg-gray-700 text-center;
-    }
-
-    .export-btn {
-      @apply flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-white py-2 px-4 rounded-lg transition;
-    }
-
-    .risk-card {
-      @apply bg-white dark:bg-gray-800 rounded-lg shadow p-4 flex items-center;
-    }
-
-    .tab-btn {
-      @apply py-4 px-1 text-gray-500 border-b-2 border-transparent hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300 transition-colors duration-300;
-    }
-
-    .tab-btn.active {
-      @apply text-primary border-primary;
-    }
-
-    .table-header {
-      @apply px-6 py-3 bg-gray-50 dark:bg-gray-800 text-left text-xs leading-4 font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider;
-    }
-
-    .table-cell {
-      @apply px-6 py-4 whitespace-no-wrap border-b border-gray-200 dark:border-gray-700 text-sm leading-5 text-gray-800 dark:text-gray-200;
-    }
-  </style>
-</body>
-
-</html>
+        
+        toastContainer.appendChild(toast);
+        
+        setTimeout(() => {
+          toast.remove();
+        }, 5000);
+      }
+    </script>
+  </body>
+  </html>
