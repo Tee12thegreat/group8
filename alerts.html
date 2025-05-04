@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Alerts & Notifications | Fraud Detection System</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.6.1/dist/socket.io.min.js"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            primary: '#5D5CDE',
+            'dark-bg': '#181818',
+            'light-bg': '#FFFFFF',
+            'risk-low': '#10B981',
+            'risk-medium': '#F59E0B',
+            'risk-high': '#EF4444',
+            'financial': '#3B82F6',
+            'lifestyle': '#8B5CF6',
+            'secrecy': '#EC4899',
+            'vacation': '#14B8A6',
+            'reporting': '#F97316'
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    .risk-indicator {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      display: inline-block;
+      margin-right: 6px;
+    }
+
+    .risk-low {
+      background-color: #10B981;
+    }
+
+    .risk-medium {
+      background-color: #F59E0B;
+    }
+
+    .risk-high {
+      background-color: #EF4444;
+    }
+
+    .alert-animation {
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.5;
+      }
+
+      100% {
+        opacity: 1;
+      }
+    }
+
+    .card-collapse-enter {
+      max-height: 0;
+      opacity: 0;
+      overflow: hidden;
+      transition: max-height 0.5s ease-in-out, opacity 0.3s ease-in-out;
+    }
+
+    .card-collapse-enter-active {
+      max-height: 1000px;
+      opacity: 1;
+    }
+
+    .dark .table-striped tr:nth-child(even) {
+      background-color: rgba(55, 65, 81, 0.3);
+    }
+
+    .table-striped tr:nth-child(even) {
+      background-color: rgba(243, 244, 246, 0.5);
+    }
+
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1rem;
+    }
+
+    @media (max-width: 640px) {
+      .dashboard-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background-color: rgba(0, 0, 0, 0.5);
+      z-index: 100;
+      justify-content: center;
+      align-items: center;
+      backdrop-filter: blur(10px);
+    }
+
+    .modal.active {
+      display: flex;
+    }
+
+    body.modal-open {
+      overflow: hidden;
+    }
+
+    body.modal-open::before {
+      content: "";
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(10px);
+      z-index: 99;
+    }
+
+    #alertsPanel {
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    .employee-details {
+      display: none;
+      margin-top: 10px;
+      padding: 10px;
+      background-color: #f0f0f0;
+      border-radius: 5px;
+    }
+
+    .employee-details.active {
+      display: block;
+    }
+
+    .behavior-tag {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 500;
+      margin-right: 4px;
+      margin-bottom: 4px;
+    }
+
+    .behavior-financial {
+      background-color: #EFF6FF;
+      color: #1D4ED8;
+    }
+
+    .behavior-lifestyle {
+      background-color: #F5F3FF;
+      color: #7C3AED;
+    }
+
+    .behavior-secrecy {
+      background-color: #FDF2F8;
+      color: #DB2777;
+    }
+
+    .behavior-vacation {
+      background-color: #ECFDF5;
+      color: #0D9488;
+    }
+
+    .behavior-reporting {
+      background-color: #FFF7ED;
+      color: #EA580C;
+    }
+
+    .dark .behavior-financial {
+      background-color: #1E3A8A;
+      color: #BFDBFE;
+    }
+
+    .dark .behavior-lifestyle {
+      background-color: #4C1D95;
+      color: #DDD6FE;
+    }
+
+    .dark .behavior-secrecy {
+      background-color: #831843;
+      color: #FBCFE8;
+    }
+
+    .dark .behavior-vacation {
+      background-color: #134E4A;
+      color: #99F6E4;
+    }
+
+    .dark .behavior-reporting {
+      background-color: #7C2D12;
+      color: #FED7AA;
+    }
+
+    .risk-timeline {
+      position: relative;
+      padding-left: 20px;
+    }
+
+    .risk-timeline::before {
+      content: '';
+      position: absolute;
+      left: 6px;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background-color: #E5E7EB;
+    }
+
+    .dark .risk-timeline::before {
+      background-color: #374151;
+    }
+
+    .timeline-item {
+      position: relative;
+      padding-bottom: 16px;
+    }
+
+    .timeline-item::before {
+      content: '';
+      position: absolute;
+      left: -20px;
+      top: 4px;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background-color: #E5E7EB;
+    }
+
+    .dark .timeline-item::before {
+      background-color: #374151;
+    }
+
+    .timeline-item.high::before {
+      background-color: #EF4444;
+    }
+
+    .timeline-item.medium::before {
+      background-color: #F59E0B;
+    }
+
+    .timeline-item.low::before {
+      background-color: #10B981;
+    }
+
+    .psycho-card {
+      transition: all 0.3s ease;
+    }
+
+    .psycho-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    }
+
+    .dark .psycho-card:hover {
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
+    }
+
+    .nav-link {
+      position: relative;
+    }
+
+    .nav-link::after {
+      content: '';
+      position: absolute;
+      bottom: -2px;
+      left: 0;
+      width: 0;
+      height: 2px;
+      background-color: #5D5CDE;
+      transition: width 0.3s ease;
+    }
+
+    .nav-link.active::after {
+      width: 100%;
+    }
+
+    .nav-link:hover::after {
+      width: 100%;
+    }
+
+    .sidebar {
+      transition: all 0.3s ease;
+    }
+
+    @media (max-width: 768px) {
+      .sidebar {
+        transform: translateX(-100%);
+        position: fixed;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        z-index: 40;
+      }
+
+      .sidebar.active {
+        transform: translateX(0);
+      }
+    }
+
+    .sidebar-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(0, 0, 0, 0.5);
+      z-index: 30;
+    }
+
+    .sidebar-overlay.active {
+      display: block;
+    }
+  </style>
+</head>
+
+<body class="bg-gray-100 dark:bg-dark-bg text-gray-800 dark:text-gray-200 transition-colors duration-300">
+
+
+  <div class="min-h-screen flex flex-col">
+    <!-- Mobile Sidebar Toggle -->
+    <button id="sidebarToggle" class="fixed top-4 left-4 z-20 p-2 rounded-lg bg-white dark:bg-gray-800 shadow-md md:hidden">
+      <i class="fas fa-bars"></i>
+    </button>
+
+    <!-- Sidebar Overlay -->
+    <div id="sidebarOverlay" class="sidebar-overlay"></div>
+
+    <!-- Sidebar Navigation -->
+    <div id="sidebar" class="sidebar w-64 bg-white dark:bg-gray-900 shadow-md flex-shrink-0 fixed h-full z-40">
+      <div class="p-4 border-b border-gray-200 dark:border-gray-700">
+        <div class="flex items-center">
+          <i class="fas fa-shield-alt text-primary text-2xl mr-3"></i>
+          <h1 class="text-xl font-bold">Fraud Detection</h1>
+        </div>
+      </div>
+      <nav class="p-4">
+        <ul class="space-y-2">
+          <li>
+            <a href="index.html" class="nav-link active flex items-center p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
+              <i class="fas fa-chart-line mr-3"></i>
+              <span>Dashboard</span>
+            </a>
+          </li>
+          <li>
+            <a href="monitoring.html" class="nav-link flex items-center p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
+              <i class="fas fa-users mr-3"></i>
+              <span>Employee Monitoring</span>
+            </a>
+          </li>
+          <li>
+            <a href="analytics.html" class="nav-link flex items-center p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
+              <i class="fas fa-chart-pie mr-3"></i>
+              <span>Behavioral Analytics</span>
+            </a>
+          </li>
+          <li>
+            <a href="factors.html" class="nav-link flex items-center p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
+              <i class="fas fa-brain mr-3"></i>
+              <span>Psychosocial Factors</span>
+            </a>
+          </li>
+          <li>
+            <a href="alerts.html" class="nav-link flex items-center p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
+              <i class="fas fa-bell mr-3"></i>
+              <span>Alerts & Notifications</span>
+            </a>
+          </li>
+          <li>
+            <a href="settings.html" class="nav-link flex items-center p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
+              <i class="fas fa-cog mr-3"></i>
+              <span>System Settings</span>
+            </a>
+          </li>
+          <li>
+            <a href="documentation.html" class="nav-link flex items-center p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
+              <i class="fas fa-book mr-3"></i>
+              <span>Research Documentation</span>
+            </a>
+          </li>
+        </ul>
+      </nav>
+    </div>
+
+  <main class="flex-grow container mx-auto px-4 py-6">
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+      <div>
+        <h2 class="text-2xl font-bold">Alerts & Notifications</h2>
+        <p class="text-gray-600 dark:text-gray-400">Review and manage fraud detection alerts</p>
+      </div>
+      <div class="flex flex-col sm:flex-row gap-3">
+        <button id="markAllReadBtn" class="flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-white py-2 px-4 rounded-lg transition">
+          <i class="fas fa-check-double"></i>
+          <span>Mark All Read</span>
+        </button>
+        <button class="flex items-center justify-center gap-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 py-2 px-4 rounded-lg transition">
+          <i class="fas fa-sliders-h"></i>
+          <span>Alert Settings</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Alert Filters -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 mb-6">
+      <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div class="flex items-center space-x-4">
+          <div>
+            <label class="block text-sm font-medium mb-1">Risk Level</label>
+            <select class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm">
+              <option>All Levels</option>
+              <option>High Risk</option>
+              <option>Medium Risk</option>
+              <option>Low Risk</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">Behavior Type</label>
+            <select class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm">
+              <option>All Behaviors</option>
+              <option>Financial Discrepancies</option>
+              <option>Lifestyle Changes</option>
+              <option>Work Secrecy</option>
+              <option>Vacation Avoidance</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Time Frame</label>
+          <select class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm">
+            <option>Last 24 Hours</option>
+            <option>Last 7 Days</option>
+            <option>Last 30 Days</option>
+            <option>All Time</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Alerts List -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden mb-6">
+      <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+        <h3 class="text-lg font-semibold">Recent Alerts</h3>
+        <p class="text-sm text-gray-600 dark:text-gray-400">12 Unread Alerts</p>
+      </div>
+      <div class="divide-y divide-gray-200 dark:divide-gray-700">
+        <!-- High Risk Alert -->
+        <div class="p-4 hover:bg-gray-50 dark:hover:bg-gray-750 transition cursor-pointer">
+          <div class="flex items-start">
+            <div class="p-2 rounded-full bg-red-100 dark:bg-red-900/20 text-red-500 mr-4">
+              <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <div class="flex-1">
+              <div class="flex items-center justify-between">
+                <h4 class="font-bold">John Doe - High Risk Alert</h4>
+                <span class="text-xs text-gray-500">10 min ago</span>
+              </div>
+              <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                Multiple unauthorized transactions detected in financial system
+              </p>
+              <div class="flex mt-2 flex-wrap gap-1">
+                <span class="behavior-tag behavior-financial">Financial Pressure</span>
+                <span class="behavior-tag behavior-reporting">Reporting Discrepancies</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Medium Risk Alert -->
+        <div class="p-4 hover:bg-gray-50 dark:hover:bg-gray-750 transition cursor-pointer">
+          <div class="flex items-start">
+            <div class="p-2 rounded-full bg-yellow-100 dark:bg-yellow-900/20 text-yellow-500 mr-4">
+              <i class="fas fa-exclamation-circle"></i>
+            </div>
+            <div class="flex-1">
+              <div class="flex items-center justify-between">
+                <h4 class="font-bold">Sarah Johnson - Medium Risk Alert</h4>
+                <span class="text-xs text-gray-500">1 hour ago</span>
+              </div>
+              <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                Unexplained lifestyle improvements detected
+              </p>
+              <div class="flex mt-2 flex-wrap gap-1">
+                <span class="behavior-tag behavior-lifestyle">Lifestyle Change</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- More alerts -->
+      </div>
+      <div class="p-4 border-t border-gray-200 dark:border-gray-700 text-center">
+        <button class="text-primary hover:underline">Load More Alerts</button>
+      </div>
+    </div>
+
+    <!-- Alert Statistics -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <h3 class="text-lg font-semibold mb-4">Alert Trends</h3>
+        <div class="h-64">
+          <canvas id="alertTrendChart"></canvas>
+        </div>
+      </div>
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <h3 class="text-lg font-semibold mb-4">Alert Types Distribution</h3>
+        <div class="h-64">
+          <canvas id="alertTypeChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Same footer as dashboard.html -->
+
+  <script>
+   document.addEventListener('DOMContentLoaded', () => {
+    
+  
+        // Theme toggle
+        document.getElementById('theme-toggle').addEventListener('click', () => {
+          document.documentElement.classList.toggle('dark');
+          localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+        });
+  
+        // Initialize theme from localStorage
+        if (localStorage.getItem('theme') === 'dark' || (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+          document.documentElement.classList.add('dark');
+        }
+  
+        // Dropdowns
+        document.querySelectorAll('.dropdown-btn').forEach(btn => {
+          btn.addEventListener('click', function() {
+            const panelId = this.id.replace('Dropdown', 'Panel');
+            const panel = document.getElementById(panelId);
+            panel.classList.toggle('hidden');
+          });
+        });
+  
+        // Close dropdowns when clicking outside
+        document.addEventListener('click', (e) => {
+          if (!e.target.closest('.relative')) {
+            document.querySelectorAll('.dropdown-panel').forEach(panel => {
+              panel.classList.add('hidden');
+            });
+          }
+        });
+  
+        // Employee details toggle
+        document.querySelectorAll('.view-details-btn').forEach(button => {
+          button.addEventListener('click', function() {
+            const employee = this.dataset.employee;
+            const detailsRow = document.getElementById(`${employee}-details`);
+            detailsRow.classList.toggle('active');
+          });
+        });
+  
+        // Department tabs
+        document.querySelectorAll('.tab-btn').forEach(tab => {
+          tab.addEventListener('click', function() {
+            document.querySelectorAll('.tab-btn').forEach(t => t.classList.remove('active'));
+            this.classList.add('active');
+            // Here you would filter the table by department
+          });
+        });
+  
+        // Logout
+        document.getElementById('logoutBtn').addEventListener('click', () => {
+          authModal.classList.add('active');
+          body.classList.add('modal-open');
+          showToast('You have been logged out', 'info');
+        });
+  
+        // Mark all alerts as read
+        document.getElementById('markAllRead').addEventListener('click', () => {
+          document.getElementById('alertCount').textContent = '0';
+          showToast('All alerts marked as read', 'success');
+        });
+  
+        // Sidebar toggle for mobile
+        const sidebarToggle = document.getElementById('sidebarToggle');
+        const sidebar = document.getElementById('sidebar');
+        const sidebarOverlay = document.getElementById('sidebarOverlay');
+        
+        sidebarToggle.addEventListener('click', () => {
+          sidebar.classList.toggle('active');
+          sidebarOverlay.classList.toggle('active');
+        });
+        
+        sidebarOverlay.addEventListener('click', () => {
+          sidebar.classList.remove('active');
+          sidebarOverlay.classList.remove('active');
+        });
+  
+        // Initialize charts
+        initCharts();
+  
+        // Show authentication modal on page load
+        authModal.classList.add('active');
+        body.classList.add('modal-open');
+      });
+  
+      function initCharts() {
+        // Behavioral Patterns Chart
+        const behaviorCtx = document.getElementById('behaviorChart').getContext('2d');
+        new Chart(behaviorCtx, {
+          type: 'doughnut',
+          data: {
+            labels: ['Financial Discrepancies', 'Lifestyle Changes', 'Work Secrecy', 'Vacation Avoidance', 'Reporting Issues'],
+            datasets: [{
+              data: [32.6, 74.4, 76.7, 58.1, 41.9],
+              backgroundColor: [
+                '#3B82F6',
+                '#8B5CF6',
+                '#EC4899',
+                '#14B8A6',
+                '#F97316'
+              ],
+              borderWidth: 0
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                position: 'right',
+                labels: {
+                  usePointStyle: true,
+                  padding: 20
+                }
+              }
+            },
+            cutout: '70%'
+          }
+        });
+      }
+  
+      function showToast(message, type = 'info') {
+        const toastContainer = document.getElementById('toastContainer');
+        const toast = document.createElement('div');
+        toast.className = `bg-white dark:bg-gray-800 shadow-md rounded-lg p-4 flex items-start border-l-4 ${
+          type === 'success' ? 'border-green-500' : 
+          type === 'error' ? 'border-red-500' : 
+          type === 'warning' ? 'border-yellow-500' : 'border-blue-500'
+        }`;
+        
+        let icon;
+        if (type === 'success') icon = 'fa-check-circle text-green-500';
+        else if (type === 'error') icon = 'fa-exclamation-circle text-red-500';
+        else if (type === 'warning') icon = 'fa-exclamation-triangle text-yellow-500';
+        else icon = 'fa-info-circle text-blue-500';
+        
+        toast.innerHTML = `
+          <i class="fas ${icon} mr-3 mt-1"></i>
+          <div class="flex-1">
+            <p class="text-sm font-medium">${message}</p>
+          </div>
+          <button class="ml-4 text-gray-400 hover:text-gray-500">
+            <i class="fas fa-times"></i>
+          </button>
+        `;
+        
+        const closeBtn = toast.querySelector('button');
+        closeBtn.addEventListener('click', () => {
+          toast.remove();
+        });
+        
+        toastContainer.appendChild(toast);
+        
+        setTimeout(() => {
+          toast.remove();
+        }, 5000);
+      }
+  </script>
+</body>
+</html>

@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>System Settings | Fraud Detection System</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.6.1/dist/socket.io.min.js"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            primary: '#5D5CDE',
+            'dark-bg': '#181818',
+            'light-bg': '#FFFFFF',
+            'risk-low': '#10B981',
+            'risk-medium': '#F59E0B',
+            'risk-high': '#EF4444',
+            'financial': '#3B82F6',
+            'lifestyle': '#8B5CF6',
+            'secrecy': '#EC4899',
+            'vacation': '#14B8A6',
+            'reporting': '#F97316'
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    .risk-indicator {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      display: inline-block;
+      margin-right: 6px;
+    }
+
+    .risk-low {
+      background-color: #10B981;
+    }
+
+    .risk-medium {
+      background-color: #F59E0B;
+    }
+
+    .risk-high {
+      background-color: #EF4444;
+    }
+
+    .alert-animation {
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.5;
+      }
+
+      100% {
+        opacity: 1;
+      }
+    }
+
+    .card-collapse-enter {
+      max-height: 0;
+      opacity: 0;
+      overflow: hidden;
+      transition: max-height 0.5s ease-in-out, opacity 0.3s ease-in-out;
+    }
+
+    .card-collapse-enter-active {
+      max-height: 1000px;
+      opacity: 1;
+    }
+
+    .dark .table-striped tr:nth-child(even) {
+      background-color: rgba(55, 65, 81, 0.3);
+    }
+
+    .table-striped tr:nth-child(even) {
+      background-color: rgba(243, 244, 246, 0.5);
+    }
+
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1rem;
+    }
+
+    @media (max-width: 640px) {
+      .dashboard-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background-color: rgba(0, 0, 0, 0.5);
+      z-index: 100;
+      justify-content: center;
+      align-items: center;
+      backdrop-filter: blur(10px);
+    }
+
+    .modal.active {
+      display: flex;
+    }
+
+    body.modal-open {
+      overflow: hidden;
+    }
+
+    body.modal-open::before {
+      content: "";
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(10px);
+      z-index: 99;
+    }
+
+    #alertsPanel {
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    .employee-details {
+      display: none;
+      margin-top: 10px;
+      padding: 10px;
+      background-color: #f0f0f0;
+      border-radius: 5px;
+    }
+
+    .employee-details.active {
+      display: block;
+    }
+
+    .behavior-tag {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 500;
+      margin-right: 4px;
+      margin-bottom: 4px;
+    }
+
+    .behavior-financial {
+      background-color: #EFF6FF;
+      color: #1D4ED8;
+    }
+
+    .behavior-lifestyle {
+      background-color: #F5F3FF;
+      color: #7C3AED;
+    }
+
+    .behavior-secrecy {
+      background-color: #FDF2F8;
+      color: #DB2777;
+    }
+
+    .behavior-vacation {
+      background-color: #ECFDF5;
+      color: #0D9488;
+    }
+
+    .behavior-reporting {
+      background-color: #FFF7ED;
+      color: #EA580C;
+    }
+
+    .dark .behavior-financial {
+      background-color: #1E3A8A;
+      color: #BFDBFE;
+    }
+
+    .dark .behavior-lifestyle {
+      background-color: #4C1D95;
+      color: #DDD6FE;
+    }
+
+    .dark .behavior-secrecy {
+      background-color: #831843;
+      color: #FBCFE8;
+    }
+
+    .dark .behavior-vacation {
+      background-color: #134E4A;
+      color: #99F6E4;
+    }
+
+    .dark .behavior-reporting {
+      background-color: #7C2D12;
+      color: #FED7AA;
+    }
+
+    .risk-timeline {
+      position: relative;
+      padding-left: 20px;
+    }
+
+    .risk-timeline::before {
+      content: '';
+      position: absolute;
+      left: 6px;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background-color: #E5E7EB;
+    }
+
+    .dark .risk-timeline::before {
+      background-color: #374151;
+    }
+
+    .timeline-item {
+      position: relative;
+      padding-bottom: 16px;
+    }
+
+    .timeline-item::before {
+      content: '';
+      position: absolute;
+      left: -20px;
+      top: 4px;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background-color: #E5E7EB;
+    }
+
+    .dark .timeline-item::before {
+      background-color: #374151;
+    }
+
+    .timeline-item.high::before {
+      background-color: #EF4444;
+    }
+
+    .timeline-item.medium::before {
+      background-color: #F59E0B;
+    }
+
+    .timeline-item.low::before {
+      background-color: #10B981;
+    }
+
+    .psycho-card {
+      transition: all 0.3s ease;
+    }
+
+    .psycho-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    }
+
+    .dark .psycho-card:hover {
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
+    }
+
+    .nav-link {
+      position: relative;
+    }
+
+    .nav-link::after {
+      content: '';
+      position: absolute;
+      bottom: -2px;
+      left: 0;
+      width: 0;
+      height: 2px;
+      background-color: #5D5CDE;
+      transition: width 0.3s ease;
+    }
+
+    .nav-link.active::after {
+      width: 100%;
+    }
+
+    .nav-link:hover::after {
+      width: 100%;
+    }
+
+    .sidebar {
+      transition: all 0.3s ease;
+    }
+
+    @media (max-width: 768px) {
+      .sidebar {
+        transform: translateX(-100%);
+        position: fixed;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        z-index: 40;
+      }
+
+      .sidebar.active {
+        transform: translateX(0);
+      }
+    }
+
+    .sidebar-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(0, 0, 0, 0.5);
+      z-index: 30;
+    }
+
+    .sidebar-overlay.active {
+      display: block;
+    }
+  </style>
+</head>
+
+<body class="bg-gray-100 dark:bg-dark-bg text-gray-800 dark:text-gray-200 transition-colors duration-300">
+
+  <div class="min-h-screen flex flex-col">
+    <!-- Mobile Sidebar Toggle -->
+    <button id="sidebarToggle" class="fixed top-4 left-4 z-20 p-2 rounded-lg bg-white dark:bg-gray-800 shadow-md md:hidden">
+      <i class="fas fa-bars"></i>
+    </button>
+
+    <!-- Sidebar Overlay -->
+    <div id="sidebarOverlay" class="sidebar-overlay"></div>
+
+    <!-- Sidebar Navigation -->
+    <div id="sidebar" class="sidebar w-64 bg-white dark:bg-gray-900 shadow-md flex-shrink-0 fixed h-full z-40">
+      <div class="p-4 border-b border-gray-200 dark:border-gray-700">
+        <div class="flex items-center">
+          <i class="fas fa-shield-alt text-primary text-2xl mr-3"></i>
+          <h1 class="text-xl font-bold">Fraud Detection</h1>
+        </div>
+      </div>
+      <nav class="p-4">
+        <ul class="space-y-2">
+          <li>
+            <a href="index.html" class="nav-link active flex items-center p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
+              <i class="fas fa-chart-line mr-3"></i>
+              <span>Dashboard</span>
+            </a>
+          </li>
+          <li>
+            <a href="monitoring.html" class="nav-link flex items-center p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
+              <i class="fas fa-users mr-3"></i>
+              <span>Employee Monitoring</span>
+            </a>
+          </li>
+          <li>
+            <a href="analytics.html" class="nav-link flex items-center p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
+              <i class="fas fa-chart-pie mr-3"></i>
+              <span>Behavioral Analytics</span>
+            </a>
+          </li>
+          <li>
+            <a href="factors.html" class="nav-link flex items-center p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
+              <i class="fas fa-brain mr-3"></i>
+              <span>Psychosocial Factors</span>
+            </a>
+          </li>
+          <li>
+            <a href="alerts.html" class="nav-link flex items-center p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
+              <i class="fas fa-bell mr-3"></i>
+              <span>Alerts & Notifications</span>
+            </a>
+          </li>
+          <li>
+            <a href="settings.html" class="nav-link flex items-center p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
+              <i class="fas fa-cog mr-3"></i>
+              <span>System Settings</span>
+            </a>
+          </li>
+          <li>
+            <a href="documentation.html" class="nav-link flex items-center p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
+              <i class="fas fa-book mr-3"></i>
+              <span>Research Documentation</span>
+            </a>
+          </li>
+        </ul>
+      </nav>
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="flex-1 flex flex-col md:pl-64">
+      <!-- Header -->
+      <header class="bg-white dark:bg-gray-900 shadow-md">
+        <div class="container mx-auto px-4 py-4 flex flex-col md:flex-row justify-between items-center">
+          <div class="flex items-center mb-2 md:mb-0">
+            <h1 class="text-xl md:text-2xl font-bold">Fraudulent Employee Behavior Detection System</h1>
+          </div>
+          <div class="flex items-center space-x-2">
+            <div class="relative">
+              <button id="alertsDropdown"
+                class="p-2 rounded-full text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors relative">
+                <i class="fas fa-bell text-lg"></i>
+                <span id="alertCount"
+                  class="absolute top-0 right-0 bg-risk-high text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">5</span>
+              </button>
+              <div id="alertsPanel"
+                class="hidden absolute right-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-lg shadow-lg z-30 overflow-hidden">
+                <div
+                  class="p-3 bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 flex justify-between items-center">
+                  <h3 class="font-semibold">Recent Alerts</h3>
+                  <button id="markAllRead" class="text-xs text-primary hover:underline">Mark all as read</button>
+                </div>
+                <div class="max-h-96 overflow-y-auto">
+                  <div
+                    class="p-3 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750 transition">
+                    <div class="flex items-center">
+                      <span class="risk-indicator risk-high"></span>
+                      <span class="font-medium">John Doe - Financial Discrepancy</span>
+                    </div>
+                    <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Multiple unauthorized transactions detected</p>
+                    <div class="flex mt-2 flex-wrap gap-1">
+                      <span class="behavior-tag behavior-financial">Financial Pressure</span>
+                      <span class="behavior-tag behavior-reporting">Reporting Discrepancies</span>
+                    </div>
+                    <div class="flex justify-between items-center mt-2 text-xs">
+                      <span class="text-gray-500">10 min ago</span>
+                      <button class="text-primary hover:underline">View</button>
+                    </div>
+                  </div>
+                  <div
+                    class="p-3 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750 transition">
+                    <div class="flex items-center">
+                      <span class="risk-indicator risk-medium"></span>
+                      <span class="font-medium">Sarah Johnson - Lifestyle Change</span>
+                    </div>
+                    <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Unexplained lifestyle improvements</p>
+                    <div class="flex mt-2 flex-wrap gap-1">
+                      <span class="behavior-tag behavior-lifestyle">Lifestyle Change</span>
+                    </div>
+                    <div class="flex justify-between items-center mt-2 text-xs">
+                      <span class="text-gray-500">1 hour ago</span>
+                      <button class="text-primary hover:underline">View</button>
+                    </div>
+                  </div>
+                </div>
+                <div class="p-2 bg-gray-100 dark:bg-gray-700 text-center">
+                  <a href="#" class="text-sm text-primary hover:underline">View All Alerts</a>
+                </div>
+              </div>
+            </div>
+            <button id="theme-toggle"
+              class="p-2 rounded-full text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+              <i class="fas fa-moon dark:hidden"></i>
+              <i class="fas fa-sun hidden dark:inline"></i>
+            </button>
+            <div class="relative">
+              <button id="userDropdown"
+                class="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+                <img id="userAvatar" class="w-8 h-8 rounded-full" src="https://picsum.photos/200" alt="User avatar">
+                <span id="userName" class="hidden md:inline font-medium">Admin User</span>
+                <i class="fas fa-chevron-down text-xs"></i>
+              </button>
+              <div id="userPanel"
+                class="hidden absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg z-30">
+                <div class="p-3 border-b border-gray-200 dark:border-gray-600">
+                  <p id="userRole" class="text-sm text-gray-600 dark:text-gray-400">Role: <span
+                      class="font-medium">Administrator</span></p>
+                </div>
+                <div class="p-2">
+                  <button id="settingsBtn"
+                    class="w-full text-left px-3 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition text-sm">
+                    <i class="fas fa-cog mr-2"></i> Settings
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <!-- Floating Toast Notification Container -->
+      <div id="toastContainer" class="fixed top-5 right-5 z-50 w-72 space-y-3">
+        <!-- Toasts will be dynamically added here -->
+      </div>
+
+      <!-- Main Content -->
+      <main class="flex-grow container mx-auto px-4 py-6">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+          <div>
+            <h2 class="text-2xl font-bold">System Settings</h2>
+            <p class="text-gray-600 dark:text-gray-400">Configure fraud detection parameters and system preferences</p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <!-- Left Column -->
+          <div class="lg:col-span-2 space-y-6">
+            <!-- Detection Settings -->
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+              <h3 class="text-lg font-semibold mb-4">Detection Settings</h3>
+              <div class="space-y-4">
+                <div>
+                  <label class="block text-sm font-medium mb-1">Behavioral Thresholds</label>
+                  <div class="space-y-3">
+                    <div>
+                      <div class="flex justify-between mb-1">
+                        <span class="text-sm">Financial Discrepancies Sensitivity</span>
+                        <span class="text-sm">High</span>
+                      </div>
+                      <input type="range" class="w-full" value="80">
+                    </div>
+                    <div>
+                      <div class="flex justify-between mb-1">
+                        <span class="text-sm">Lifestyle Changes Sensitivity</span>
+                        <span class="text-sm">Medium</span>
+                      </div>
+                      <input type="range" class="w-full" value="65">
+                    </div>
+                    <div>
+                      <div class="flex justify-between mb-1">
+                        <span class="text-sm">Work Secrecy Sensitivity</span>
+                        <span class="text-sm">High</span>
+                      </div>
+                      <input type="range" class="w-full" value="75">
+                    </div>
+                  </div>
+                </div>
+                
+                <div>
+                  <label class="block text-sm font-medium mb-1">Alert Notification Preferences</label>
+                  <div class="space-y-2">
+                    <label class="flex items-center">
+                      <input type="checkbox" class="rounded text-primary" checked>
+                      <span class="ml-2">Email Notifications</span>
+                    </label>
+                    <label class="flex items-center">
+                      <input type="checkbox" class="rounded text-primary" checked>
+                      <span class="ml-2">In-App Notifications</span>
+                    </label>
+                    <label class="flex items-center">
+                      <input type="checkbox" class="rounded text-primary">
+                      <span class="ml-2">Mobile Push Notifications</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- User Management -->
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+              <h3 class="text-lg font-semibold mb-4">User Management</h3>
+              <div class="overflow-x-auto">
+                <table class="min-w-full">
+                  <thead>
+                    <tr>
+                      <th class="table-header">User</th>
+                      <th class="table-header">Role</th>
+                      <th class="table-header">Permissions</th>
+                      <th class="table-header">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td class="table-cell">admin@company.com</td>
+                      <td class="table-cell">Administrator</td>
+                      <td class="table-cell">Full Access</td>
+                      <td class="table-cell">
+                        <button class="text-primary hover:underline">Edit</button>
+                      </td>
+                    </tr>
+                    <!-- More users -->
+                  </tbody>
+                </table>
+              </div>
+              <button class="mt-4 bg-primary hover:bg-primary/90 text-white py-2 px-4 rounded-lg transition">
+                <i class="fas fa-plus mr-2"></i> Add User
+              </button>
+            </div>
+          </div>
+
+          <!-- Right Column -->
+          <div class="space-y-6">
+            <!-- System Information -->
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+              <h3 class="text-lg font-semibold mb-4">System Information</h3>
+              <div class="space-y-3">
+                <div>
+                  <p class="text-sm text-gray-600 dark:text-gray-400">System Version</p>
+                  <p class="font-medium">Fraud Detection System v1.0</p>
+                </div>
+                <div>
+                  <p class="text-sm text-gray-600 dark:text-gray-400">Last Updated</p>
+                  <p class="font-medium">May 15, 2024</p>
+                </div>
+                <div>
+                  <p class="text-sm text-gray-600 dark:text-gray-400">Database Status</p>
+                  <p class="font-medium text-green-600 dark:text-green-400">Connected</p>
+                </div>
+                <div>
+                  <p class="text-sm text-gray-600 dark:text-gray-400">Model Accuracy</p>
+                  <p class="font-medium">87.4%</p>
+                </div>
+              </div>
+              <button class="mt-4 w-full bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 py-2 px-4 rounded-lg transition">
+                <i class="fas fa-sync-alt mr-2"></i> Check for Updates
+              </button>
+            </div>
+
+            <!-- Data Integration -->
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+              <h3 class="text-lg font-semibold mb-4">Data Integration</h3>
+              <div class="space-y-3">
+                <div class="flex items-center justify-between">
+                  <div>
+                    <p class="font-medium">HR System</p>
+                    <p class="text-sm text-gray-600 dark:text-gray-400">Employee records</p>
+                  </div>
+                  <span class="text-green-600 dark:text-green-400">Connected</span>
+                </div>
+                <div class="flex items-center justify-between">
+                  <div>
+                    <p class="font-medium">Financial System</p>
+                    <p class="text-sm text-gray-600 dark:text-gray-400">Transaction data</p>
+                  </div>
+                  <span class="text-green-600 dark:text-green-400">Connected</span>
+                </div>
+                <div class="flex items-center justify-between">
+                  <div>
+                    <p class="font-medium">Access Control</p>
+                    <p class="text-sm text-gray-600 dark:text-gray-400">Login/logout data</p>
+                  </div>
+                  <span class="text-yellow-600 dark:text-yellow-400">Partial</span>
+                </div>
+              </div>
+              <button class="mt-4 w-full bg-primary hover:bg-primary/90 text-white py-2 px-4 rounded-lg transition">
+                <i class="fas fa-plug mr-2"></i> Configure Integrations
+              </button>
+            </div>
+
+            <!-- Backup & Restore -->
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+              <h3 class="text-lg font-semibold mb-4">Backup & Restore</h3>
+              <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                Last backup: May 14, 2024 at 2:30 AM
+              </p>
+              <div class="space-y-2">
+                <button class="w-full bg-blue-100 dark:bg-blue-900/20 text-blue-600 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-900/30 py-2 px-4 rounded-lg transition">
+                  <i class="fas fa-database mr-2"></i> Create Backup
+                </button>
+                <button class="w-full bg-purple-100 dark:bg-purple-900/20 text-purple-600 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-900/30 py-2 px-4 rounded-lg transition">
+                  <i class="fas fa-undo mr-2"></i> Restore Backup
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <!-- Footer -->
+      <footer class="bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 py-4">
+        <div class="container mx-auto px-4 text-center text-sm text-gray-600 dark:text-gray-400">
+          <p>Fraudulent Employee Behavior Detection System v1.0</p>
+          <p class="mt-1">Based on research: "A Comprehensive Analysis of Behavioral Patterns for Fraudulent Employees"</p>
+        </div>
+      </footer>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // Theme toggle
+      document.getElementById('theme-toggle').addEventListener('click', () => {
+        document.documentElement.classList.toggle('dark');
+        localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+      });
+
+      // Initialize theme from localStorage
+      if (localStorage.getItem('theme') === 'dark' || (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.classList.add('dark');
+      }
+
+      // Dropdowns
+      document.querySelectorAll('.dropdown-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+          const panelId = this.id.replace('Dropdown', 'Panel');
+          const panel = document.getElementById(panelId);
+          panel.classList.toggle('hidden');
+        });
+      });
+
+      // Close dropdowns when clicking outside
+      document.addEventListener('click', (e) => {
+        if (!e.target.closest('.relative')) {
+          document.querySelectorAll('.dropdown-panel').forEach(panel => {
+            panel.classList.add('hidden');
+          });
+        }
+      });
+
+      // Employee details toggle
+      document.querySelectorAll('.view-details-btn').forEach(button => {
+        button.addEventListener('click', function() {
+          const employee = this.dataset.employee;
+          const detailsRow = document.getElementById(`${employee}-details`);
+          detailsRow.classList.toggle('active');
+        });
+      });
+
+      // Department tabs
+      document.querySelectorAll('.tab-btn').forEach(tab => {
+        tab.addEventListener('click', function() {
+          document.querySelectorAll('.tab-btn').forEach(t => t.classList.remove('active'));
+          this.classList.add('active');
+          // Here you would filter the table by department
+        });
+      });
+
+      // Mark all alerts as read
+      document.getElementById('markAllRead').addEventListener('click', () => {
+        document.getElementById('alertCount').textContent = '0';
+        showToast('All alerts marked as read', 'success');
+      });
+
+      // Sidebar toggle for mobile
+      const sidebarToggle = document.getElementById('sidebarToggle');
+      const sidebar = document.getElementById('sidebar');
+      const sidebarOverlay = document.getElementById('sidebarOverlay');
+      
+      sidebarToggle.addEventListener('click', () => {
+        sidebar.classList.toggle('active');
+        sidebarOverlay.classList.toggle('active');
+      });
+      
+      sidebarOverlay.addEventListener('click', () => {
+        sidebar.classList.remove('active');
+        sidebarOverlay.classList.remove('active');
+      });
+
+      // Initialize charts
+      initCharts();
+    });
+
+    function initCharts() {
+      // Behavioral Patterns Chart
+      const behaviorCtx = document.getElementById('behaviorChart').getContext('2d');
+      new Chart(behaviorCtx, {
+        type: 'doughnut',
+        data: {
+          labels: ['Financial Discrepancies', 'Lifestyle Changes', 'Work Secrecy', 'Vacation Avoidance', 'Reporting Issues'],
+          datasets: [{
+            data: [32.6, 74.4, 76.7, 58.1, 41.9],
+            backgroundColor: [
+              '#3B82F6',
+              '#8B5CF6',
+              '#EC4899',
+              '#14B8A6',
+              '#F97316'
+            ],
+            borderWidth: 0
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'right',
+              labels: {
+                usePointStyle: true,
+                padding: 20
+              }
+            }
+          },
+          cutout: '70%'
+        }
+      });
+    }
+
+    function showToast(message, type = 'info') {
+      const toastContainer = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      toast.className = `bg-white dark:bg-gray-800 shadow-md rounded-lg p-4 flex items-start border-l-4 ${
+        type === 'success' ? 'border-green-500' : 
+        type === 'error' ? 'border-red-500' : 
+        type === 'warning' ? 'border-yellow-500' : 'border-blue-500'
+      }`;
+      
+      let icon;
+      if (type === 'success') icon = 'fa-check-circle text-green-500';
+      else if (type === 'error') icon = 'fa-exclamation-circle text-red-500';
+      else if (type === 'warning') icon = 'fa-exclamation-triangle text-yellow-500';
+      else icon = 'fa-info-circle text-blue-500';
+      
+      toast.innerHTML = `
+        <i class="fas ${icon} mr-3 mt-1"></i>
+        <div class="flex-1">
+          <p class="text-sm font-medium">${message}</p>
+        </div>
+        <button class="ml-4 text-gray-400 hover:text-gray-500">
+          <i class="fas fa-times"></i>
+        </button>
+      `;
+      
+      const closeBtn = toast.querySelector('button');
+      closeBtn.addEventListener('click', () => {
+        toast.remove();
+      });
+      
+      toastContainer.appendChild(toast);
+      
+      setTimeout(() => {
+        toast.remove();
+      }, 5000);
+    }
+  </script>
+</body>
+</html>
